@@ -1,0 +1,3208 @@
+package com.example.final_masjid;
+
+import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.res.AssetManager;
+import android.database.Cursor;
+import android.graphics.Color;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.CountDownTimer;
+import android.os.Handler;
+import android.provider.MediaStore;
+import android.text.TextUtils;
+import android.text.format.DateFormat;
+import android.util.Log;
+import android.view.View;
+import android.view.WindowManager;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.DateTimeException;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.chrono.HijrahChronology;
+import java.time.chrono.HijrahDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+
+import jxl.Cell;
+import jxl.Sheet;
+import jxl.Workbook;
+import jxl.read.biff.BiffException;
+
+public class MainActivity extends AppCompatActivity {
+
+    Button btnFajrPlus;
+    Button btnFajrMinus;
+    Button btnZuharPlus;
+    Button btnZuharMinus;
+    Button btnAsrPlus;
+    Button btnAsrMinus;
+    Button btnMaghribPlus;
+    Button btnMaghribMinus;
+    Button btnIshaPlus;
+    Button btnIshaMinus;
+
+    Button btnRefresh, btnLoad, btnNotice, btnFridayPlus, btnFridayMinus;
+
+    boolean isPrayerButtonsVisible = true;
+    String path, OriginalFile;
+
+
+
+    // To create flip clock
+//    CustomDigitView hoursView;
+//    CustomDigitView minutesView;
+//    CustomDigitView secondsView;
+
+    // Stores the additional minutes for prayertimes
+
+    // Convert 5 minutes into a LocalTime object
+    LocalTime fiveMinutes = LocalTime.of(0, 5); // Represents 00:05
+
+    private int additionalFajrMinutes = 0, additionalZuharMinutes = 0, additionalAsrMinutes = 0, additionalMagribMinutes = 0, additionalIshaMinutes = 0;
+    private final int MAX_ADDITIONAL_MINUTES = 150; // Maximum number of minutes that can be added/deducted
+
+    //    LocalTime fajrTime, zuharTime, asrTime, magribTime, ishaTime;
+    private static final int FILE_CHOOSER_REQUEST_CODE = 1;
+
+    // For clicking on the buttons:
+    int fajrCounter = 0, zuharCounter = 0, asrCounter = 0, maghribCounter = 0, ishaCounter = 0;
+    LocalTime fajrTime24 = null;
+    LocalTime zuharTime24 = null;
+    LocalTime asrTime24 = null;
+    LocalTime magribTime24 = null;
+    LocalTime ishaTime24 = null;
+
+    LocalTime addedFajrTime24 = null;
+    LocalTime addedZuharTime24 = null;
+    LocalTime addedAsrTime24 = null;
+    LocalTime addedMaghribTime24 = null;
+    LocalTime AddedFajrTime24 = null;
+
+    LocalTime nextFajr24 = null;
+    LocalTime nextZuhar24 = null;
+    LocalTime nextAsr24 = null;
+    LocalTime nextMaghrib24 = null;
+    LocalTime nextIsha24 = null;
+
+    LocalTime nextFajrTime24 = null;
+    LocalTime nextZuharTime24 = null;
+    LocalTime nextAsrTime24 = null;
+    LocalTime nextMaghribTime24 = null;
+    LocalTime nextIshaTime24 = null;
+
+    LocalTime deductedFajrTime24 = null;
+    LocalTime deductedZuharTime24 = null;
+    LocalTime deductedAsrTime24 = null;
+    LocalTime deductedMaghribTime24 = null;
+    LocalTime deductedIshaTime24 = null;
+
+    boolean isFajrDeductButtonPressed = false, isZuharDeductButtonPressed = false,
+            isAsrDeductButtonPressed = false, isMaghribDeductButtonPressed = false,
+            isIshaDeductButtonPressed = false;
+
+    boolean isbtnFajrPlusPressed = false, isZuharAddMinutesPressed = false,
+            isAsrAddMinutesPressed = false, isMaghribAddMinutesPressed = false,
+            isIshaAddMinutesPressed = false;
+
+    boolean isZuharbtnFajrPlusPressed = false, isAsrbtnFajrPlusPressed = false,
+            isMaghbtnFajrPlusPressed = false, isIshabtnFajrPlusPressed = false;
+
+    int fajrAdd = 0, zuharAdd = 0, asrAdd = 0, maghribAdd = 0, ishaAdd = 0;
+    int fajrMinus = 0, zuharMinus = 0, asrMinus = 0, maghribMinus = 0, ishaMinus = 0;
+
+    int zuharDeductionCount = 0, zuharAdditionCount = 0;
+
+
+    boolean isFajrDeducted = false, isZuharDeducted = false, isAsrDeducted = false, isMaghribDeducted = false,
+            isIshaDeducted = false;
+    boolean isFajrAddition = false, isZuharAddition = false, isAsrAddition = false,
+            isMaghribAddition = false, isIshaAddition = false;
+
+    TextView TextViewDate;
+
+    String filePath = "";
+    AlertDialog dialog;
+    EditText editText, selectedTimeTextView;
+    TextView Fajr, Zuhar, Asr, Magrib, Isha, Namaz, nextnamaz, NoticeText, fridaytextview, fajrLable, zuharLable, asrLable, maghribLable, ishaLable,
+            BoxFajr, BoxZuhar, BoxAsr, BoxMaghrib, BoxIsha;
+    String fajr24 = "", zuhar24 = "", asr24 = "", maghrib24 = "", isha24 = "", friday24 = "", friday = "", countdowndt = "", Notice = "", fridayCheck = "", Midnight = "00:00:00";
+    long FajrAdded, zuharAdded, asrAdded, maghribAdded, ishaAdded, fajrDeduct, zuharDeduct, asrDeduct, maghribDeduct, ishaDeduct;
+    private TextView countdowntxt;
+    final Handler handler = new Handler();
+    private Runnable runnable;
+    final String DATE_FORMAT = "dd/MM/yyyy";
+    String dateformat = "dd/MM/yyyy HH:mm";
+    Date d = new Date();
+
+    private boolean FridayCheck = false;
+    private boolean LoadCheck = false;
+    String LoadPath;
+    Button Noticebutton, loadbutton, Refreshbtn, SettingsButton;
+    Intent MyIntent;
+    boolean datecheck = true;
+    boolean Refresh = true;
+    String nextfajr = "";
+    String nextzuhar = "";
+    String nextasr = "";
+    String nextMaghrib = "";
+    String nextisha = "";
+    String fajrtxt = "";
+    String zuhartxt = "";
+    String asrtxt = "";
+    String magribtxt = "";
+    String ishatxt = "";
+    TextView FajrColor, ZuharColor, AsrColor, MaghribColor, IshaColor;
+    private TextView counterText;
+    private BroadcastReceiver minuteUpdateReceiver;
+    private int counter;
+    private MasjidLooperClass looperThread = new MasjidLooperClass();
+
+    private Button btnLoadButton;
+    private File mFile;
+
+    private ActivityResultLauncher<Intent> filePickerLauncher;
+    TextView islamicDateTextView;
+    ImageView moonImageView;
+
+
+    // days offset
+    int dayOffset = 0;
+    TextView btnHijriMinus, btnHijriPlus, IBANBox, scrollingBox;
+
+
+    SharedPreferences sharedPreferences;
+
+
+    @SuppressLint("WrongViewCast")
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+
+        setContentView(R.layout.activity_main);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        islamicDateTextView = findViewById(R.id.Noticeid);
+         moonImageView = findViewById(R.id.moonImageView);
+
+
+// Determine the moon phase
+        int dayOfMonth = 1; // Replace with the actual day of the month
+        int phase = calculateMoonPhase(dayOfMonth);
+
+// Get the resource ID based on the moon phase
+        String resourceName = "moon" + phase;
+        int resourceId = getResources().getIdentifier(resourceName, "drawable", getPackageName());
+
+
+        // For Hijri Dates to remain updated on next date.
+
+        // Retrieve the day offset value from SharedPreferences
+        sharedPreferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+        int defaultDayOffset = 0; // Provide a default value if the key is not found
+        // Retrieve the stored dayOffset value, defaulting to 0 if not found
+        dayOffset = sharedPreferences.getInt("dayOffset", defaultDayOffset);
+
+        btnHijriPlus = findViewById(R.id.btnHijriPlus);
+        btnHijriMinus = findViewById(R.id.btnHijriMinus);
+
+        IBANBox = findViewById(R.id.txtIBAN);
+        scrollingBox = findViewById(R.id.scrollingBox);
+
+
+//        counterText = (TextView) findViewById(R.id.counter_text);
+//        looperThread.start();
+         btnFajrPlus = findViewById(R.id.btnFajrPlus);
+         btnFajrMinus = findViewById(R.id.btnFajrMinus);
+         btnZuharPlus = findViewById(R.id.btnZuharPlus);
+         btnZuharMinus = findViewById(R.id.btnZuharMinus);
+         btnAsrPlus = findViewById(R.id.btnAsrPlus);
+         btnAsrMinus = findViewById(R.id.btnAsrMinus);
+         btnMaghribPlus = findViewById(R.id.btnMaghribPlus);
+         btnMaghribMinus = findViewById(R.id.btnMaghribMinus);
+         btnIshaPlus = findViewById(R.id.btnIshaPlus);
+         btnIshaMinus = findViewById(R.id.btnIshaMinus);
+
+         btnRefresh = findViewById(R.id.btnRefresh);
+         btnLoad = findViewById(R.id.btnLoad);
+         btnNotice = findViewById(R.id.btnNotice);
+
+        btnFridayPlus = findViewById(R.id.btnFridayPlus);
+        btnFridayMinus = findViewById(R.id.btnFridayMinus);
+
+
+        // Declare textViews
+        FajrColor = (TextView) findViewById(R.id.fajr);
+        ZuharColor = (TextView) findViewById(R.id.zuhar);
+        AsrColor = (TextView) findViewById(R.id.asr);
+        MaghribColor = (TextView) findViewById(R.id.maghrib);
+        IshaColor = (TextView) findViewById(R.id.isha);
+
+        NoticeText = findViewById(R.id.Noticeid);
+        fridaytextview = findViewById(R.id.friday);
+        Namaz = findViewById(R.id.namazid);
+        nextnamaz = findViewById(R.id.next_namaz);
+        countdowntxt = findViewById(R.id.countdown);
+        Noticebutton = findViewById(R.id.btnNotice);
+        SettingsButton = findViewById(R.id.Settings);
+        Refreshbtn = findViewById(R.id.btnRefresh);
+        loadbutton = findViewById(R.id.btnLoad);
+
+        fajrLable = findViewById(R.id.fajrLabel);
+        zuharLable = findViewById(R.id.zuharLabel);
+        asrLable = findViewById(R.id.asrLabel);
+        maghribLable = findViewById(R.id.maghribLabel);
+        ishaLable = findViewById(R.id.ishaLabel);
+        BoxFajr = findViewById(R.id.BoxFajr);
+        BoxZuhar = findViewById(R.id.BoxZuhar);
+        BoxAsr = findViewById(R.id.BoxAsr);
+        BoxMaghrib = findViewById(R.id.BoxMaghrib);
+        BoxIsha = findViewById(R.id.BoxIsha);
+
+        fridaytextview = findViewById(R.id.friday);
+
+        // *************************************** Call Methods to start *************************
+
+        GetTime();
+        startUpdatingClockEverySecond();
+        hidePrayerButtons(); // hide by default
+//        FridayTextColor();
+
+        // ================================ Declare Digits =============================
+
+//         hoursView = findViewById(R.id.txtHour);
+//         minutesView = findViewById(R.id.txtMinutes);
+//         secondsView = findViewById(R.id.txtSeconds);
+
+
+
+        // For TextView Date
+        TextViewDate = findViewById(R.id.textClock);
+        TextView dayofweek = findViewById(R.id.DayOfWeek);
+
+//        SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
+//        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+//        String ClockText = TextViewDate.getText().toString();
+//        Log.wtf("MY ACITVITY", "Main Activity TextViewClock: " + ClockText);
+
+
+
+        // ******************************** Start the UI to update ********************************
+        GetTime();
+        AddMinutes();
+
+        // **************************** Start Scrolling text Animation ********************************
+        scrollIt();
+
+
+
+        // Run every often to update the Day Label next to Date
+        runnable = new Runnable() {
+            @SuppressLint("SetText")
+            @Override
+            public void run() {
+                handler.postDelayed(this, (1000 * 60));
+                updateIslamicDate();
+            }
+        };
+        handler.postDelayed(runnable, 2000);
+
+        // *****************************************************
+
+        // Run every often to update the Day Label next to Date
+        runnable = new Runnable() {
+            @SuppressLint("SetText")
+            @Override
+            public void run() {
+                handler.postDelayed(this, (1000 * 6 * 10));
+
+//                GetTime();
+
+                // Get today's day.
+                Calendar calendar = Calendar.getInstance();
+                int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
+
+                TextView dayofweek = findViewById(R.id.DayOfWeek);
+
+                switch (dayOfWeek) {
+                    case Calendar.SUNDAY:
+                        dayofweek.setText("Sunday");
+                        break;
+                    case Calendar.MONDAY:
+                        dayofweek.setText("Monday");
+                        break;
+                    case Calendar.TUESDAY:
+                        dayofweek.setText("Tuesday");
+                        break;
+                    case Calendar.WEDNESDAY:
+                        dayofweek.setText("Wednesday");
+                        break;
+                    case Calendar.THURSDAY:
+                        dayofweek.setText("Thursday");
+                        break;
+                    case Calendar.FRIDAY:
+                        dayofweek.setText("Friday");
+                        break;
+                    case Calendar.SATURDAY:
+                        dayofweek.setText("Saturday");
+                        break;
+                    default:
+                        dayofweek.setText("");
+                        break;
+                }
+
+            }
+        };
+        handler.postDelayed(runnable, 5000);
+
+
+
+//
+//// Start the initial iteration
+//        handler.postDelayed(runnable, 0);
+//
+
+//                CalculateTimingse();
+//                calculateMillisUntilNextPrayer();
+//                long millisUntilNextPrayer = calculateMillisUntilNextPrayer();
+//                startCountdownTimer(millisUntilNextPrayer);
+
+//                ClockUpdated();
+//                Refresh();
+
+//                SetTimesOtherApp();
+//                ClockUpdatedOtherApp();
+//                countDownStartOtherApp();
+
+
+        // Set the initial file to be timing.xls
+        mFile = new File(getExternalFilesDir(null), "timing.xls");
+//        if (!mFile.exists()) {
+//            try {
+//                mFile.createNewFile();
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
+        // Get references to the load and replace buttons
+        btnRefresh = findViewById(R.id.btnRefresh);
+        OriginalFile = "timings.xls"; // Load Original File
+        btnRefresh.setOnClickListener(new View.OnClickListener() {
+            @Override
+                    public void onClick(View v) {
+
+
+                // Reset the day offset to 0
+                dayOffset = 0;
+
+                // Clear the day offset value in SharedPreferences
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.remove("dayOffset");
+                editor.apply();
+
+                GetTime();
+                AddMinutes();
+                // Update the UI with GetTime() Default values
+                startUpdatingClockEverySecond();
+                updateIslamicDate();
+            }
+
+        });
+
+        btnLoadButton = findViewById(R.id.btnLoad);
+
+        // Set click listener for the button
+
+        // Set click listener for the button
+        btnLoadButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Show a file picker dialog to let the user choose a file
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("application/vnd.ms-excel"); // Limit selection to Excel files
+
+                // Use the ActivityResultLauncher to handle the result of the file picker
+                filePickerLauncher.launch(intent);
+            }
+        });
+
+// Initialize the file picker launcher in your onCreate or onStart method
+        filePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        if (result.getResultCode() == Activity.RESULT_OK) {
+                            Intent data = result.getData();
+                            if (data != null) {
+                                Uri fileUri = data.getData();
+                                filePath = getPathFromUri(fileUri); // Get the file path from the URI
+                                if (filePath != null) {
+                                    // Replace the original file inside getTime() method
+                                    GetTime(filePath);
+                                    GetTime();
+                                }
+                            }
+                        }
+                    }
+                }
+        );
+
+//        btnLoadButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                // Show a file picker dialog to let the user choose a file
+//                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+//                intent.setType("*/*"); // Allow any file type to be selected
+//                startActivityForResult(intent, 1);
+//                openFileChooserDialog();
+//            }
+//        });
+
+        // Define the buttons for each prayer time
+
+
+
+        // ********************* Fajr buttons for increment decrement ******************************
+
+
+
+
+//        btnFajrPlus.setVisibility(View.INVISIBLE);
+//        btnFajrMinus.setVisibility(View.INVISIBLE);
+
+
+        btnFajrPlus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Calculate the addition based on the count
+                fajrCounter++;
+                if (fajrCounter >= 0) {
+                    fajrAdd++;
+                }
+                if (fajrCounter == 0) {
+                    fajrAdd = 0;
+                }
+
+                handlePrayerTimePlusButtonClick("Fajr");
+
+//                handleAddMinutesButtonClick();
+                Log.wtf("MY ACITVITY", "fajrCounter: " + fajrCounter);
+            }
+        });
+
+        btnFajrMinus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                fajrCounter--;
+//                handleMinusMinutesButtonClick();
+
+                if (fajrCounter >= 0) {
+                    fajrAdd++;
+                }
+                if (fajrCounter == 0) {
+                    fajrAdd = 0;
+                }
+                handlePrayerTimeMinusButtonClick("Fajr");
+
+                Log.wtf("MY ACITVITY", "fajrCounter: " + fajrCounter);
+
+            }
+        });
+
+
+
+
+// Set click listeners for Zuhar buttons
+        btnZuharPlus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Handle the plus button click for Zuhar
+                handlePrayerTimePlusButtonClick("Zuhar");
+            }
+        });
+
+        btnZuharMinus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Handle the minus button click for Zuhar
+                handlePrayerTimeMinusButtonClick("Zuhar");
+            }
+        });
+
+// Set click listeners for Asr buttons
+        btnAsrPlus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Handle the plus button click for Asr
+                handlePrayerTimePlusButtonClick("Asr");
+            }
+        });
+
+        btnAsrMinus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Handle the minus button click for Asr
+                handlePrayerTimeMinusButtonClick("Asr");
+            }
+        });
+
+// Set click listeners for Maghrib buttons
+        btnMaghribPlus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Handle the plus button click for Maghrib
+//                handlePrayerTimePlusButtonClick("Maghrib");
+
+                Magrib = findViewById(R.id.maghrib);
+                String currentValue = maghrib24.toString();
+
+                try {
+                    // Parse the value as a LocalTime object with the "H:mm" format
+                    LocalTime time = LocalTime.parse(currentValue, DateTimeFormatter.ofPattern("H:mm"));
+
+                    // Add 5 minutes
+                    time = time.plusMinutes(1);
+
+                    maghrib24 = time.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                    nextMaghrib24 = LocalTime.parse(nextMaghrib, DateTimeFormatter.ofPattern("H:mm"));
+                    nextMaghribTime24 = nextMaghrib24.plusMinutes(1);
+                    nextMaghrib = nextMaghribTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                    // Update the TextView with the new value in the "H:mm" format
+                    Magrib.setText(maghrib24);
+
+                } catch (DateTimeParseException e) {
+                    // Handle the parse exception if the current value is not in a valid time format
+                    e.printStackTrace();
+                    // Display an error message or perform appropriate error handling
+                }
+            }
+        });
+
+        btnMaghribMinus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Handle the minus button click for Maghrib 5 minutes
+//                handlePrayerTimeMinusButtonClick("Maghrib");
+                Magrib = findViewById(R.id.maghrib);
+                String currentValue = maghrib24.toString();
+
+                try {
+                    // Parse the value as a LocalTime object with the "H:mm" format
+                    LocalTime time = LocalTime.parse(currentValue, DateTimeFormatter.ofPattern("H:mm"));
+
+                    // Add 5 minutes
+                    time = time.minusMinutes(1);
+
+                    maghrib24 = time.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                    nextMaghrib24 = LocalTime.parse(nextMaghrib, DateTimeFormatter.ofPattern("H:mm"));
+                    nextMaghribTime24 = nextMaghrib24.minusMinutes(1);
+                    nextMaghrib = nextMaghribTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                    // Update the TextView with the new value in the "H:mm" format
+                    Magrib.setText(maghrib24);
+
+                } catch (DateTimeParseException e) {
+                    // Handle the parse exception if the current value is not in a valid time format
+                    e.printStackTrace();
+                    // Display an error message or perform appropriate error handling
+                }
+
+
+
+            }
+        });
+
+// Set click listeners for Isha buttons
+        btnIshaPlus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Handle the plus button click for Isha
+                handlePrayerTimePlusButtonClick("Isha");
+            }
+        });
+
+        btnIshaMinus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Handle the minus button click for Isha
+                handlePrayerTimeMinusButtonClick("Isha");
+            }
+        });
+
+
+
+
+        TextView fridayTextView = findViewById(R.id.friday);
+        Button btnFridayPlus = findViewById(R.id.btnFridayPlus);
+        Button btnFridayMinus = findViewById(R.id.btnFridayMinus);
+
+        btnFridayPlus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Get the current value from the TextView
+                String currentValue = fridayTextView.getText().toString();
+
+                try {
+                    // Parse the value as a LocalTime object with the "H:mm" format
+                    LocalTime time = LocalTime.parse(currentValue, DateTimeFormatter.ofPattern("H:mm"));
+
+                    // Add 5 minutes
+                    time = time.plusMinutes(5);
+
+                    // Update the TextView with the new value in the "H:mm" format
+                    fridayTextView.setText(time.format(DateTimeFormatter.ofPattern("H:mm")));
+                } catch (DateTimeParseException e) {
+                    // Handle the parse exception if the current value is not in a valid time format
+                    e.printStackTrace();
+                    // Display an error message or perform appropriate error handling
+                }
+            }
+        });
+
+        btnFridayMinus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Get the current value from the TextView
+                String currentValue = fridayTextView.getText().toString();
+
+                try {
+                    // Parse the value as a LocalTime object with the "H:mm" format
+                    LocalTime time = LocalTime.parse(currentValue, DateTimeFormatter.ofPattern("H:mm"));
+
+                    // Add 5 minutes
+                    time = time.minusMinutes(5);
+
+                    // Update the TextView with the new value in the "H:mm" format
+                    fridayTextView.setText(time.format(DateTimeFormatter.ofPattern("H:mm")));
+                } catch (DateTimeParseException e) {
+                    // Handle the parse exception if the current value is not in a valid time format
+                    e.printStackTrace();
+                    // Display an error message or perform appropriate error handling
+                }
+            }
+        });
+
+
+
+
+        // Hide and Unhide buttons
+        SettingsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (isPrayerButtonsVisible) {
+                    hidePrayerButtons();
+                } else {
+                    showPrayerButtons();
+                }
+            }
+        });
+
+
+
+        // Set click listeners for the plus and minus buttons
+        btnHijriPlus.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                // Increment the day offset by 1
+                dayOffset++;
+                updateIslamicDate();
+//                updateMoonPhaseBasedOnHijriDate();
+
+            }
+        });
+
+        btnHijriMinus.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                // Decrement the day offset by 1
+                dayOffset--;
+                updateIslamicDate();
+//                updateMoonPhaseBasedOnHijriDate();
+
+            }
+        });
+
+    } // ******************************* Main class ENDS ******************************************
+     // *********************************************************************************************
+                // _______________________________________________________________________ \\
+
+
+    // *************************************************** Islamic Calendar *****************************************
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Store the current day offset value in SharedPreferences
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt("dayOffset", dayOffset);
+        editor.apply();
+    }
+    private void updateIslamicDate() {
+        // Get today's date
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DAY_OF_MONTH, dayOffset); // Apply the day offset
+        int year = calendar.get(Calendar.YEAR);
+        int month = calendar.get(Calendar.MONTH) + 1;
+        int day = calendar.get(Calendar.DAY_OF_MONTH);
+        DateTimeFormatter FajrinputFormat = DateTimeFormatter.ofPattern("H:mm"); // Assuming the prayer times are in 12-hour format
+
+
+        // Get the current time in 24-hour format
+        LocalTime currentTime = LocalTime.now(ZoneId.systemDefault());
+        String currentTime24 = currentTime.format(DateTimeFormatter.ofPattern("H:mm"));
+
+        // Split the Maghrib time and current time to extract hours and minutes
+        String[] maghribParts = maghrib24.split(":");
+        String[] currentTimeParts = currentTime24.split(":");
+
+        int maghribHour = Integer.parseInt(maghribParts[0]);
+        int maghribMinute = Integer.parseInt(maghribParts[1]);
+
+        int currentHour = Integer.parseInt(currentTimeParts[0]);
+        int currentMinute = Integer.parseInt(currentTimeParts[1]);
+
+        // Get the current date and time
+        LocalDate currentDate = LocalDate.now();
+        LocalDateTime currentDateTime = LocalDateTime.of(currentDate, currentTime);
+
+        // Check if it is after the Isha prayer time
+        LocalTime maghribTime = LocalTime.parse(maghrib24, FajrinputFormat);
+        LocalDateTime maghribDateTime = LocalDateTime.of(currentDate, maghribTime);
+
+        if (currentDateTime.isAfter(maghribDateTime)) {
+            day++;
+
+        }
+        // Check if the current time is after Maghrib
+//        if (currentHour > maghribHour || (currentHour == maghribHour && currentMinute >= maghribMinute)) {
+//            // Increment the day by 1
+//            day++;
+//        }
+
+        // Check if the Gregorian date is valid
+        try {
+            LocalDate.of(year, month, day);
+        } catch (DateTimeException e) {
+            // Handle the invalid date
+            Log.e("My Activity", "Invalid Gregorian date: " + year + "-" + month + "-" + day);
+            return;
+        }
+
+
+        // Convert the Gregorian date to an Islamic date
+        HijrahDate islamicDate = HijrahChronology.INSTANCE.date(LocalDate.of(year, month, day));
+
+        // Extract the Islamic date components
+        int islamicYear = islamicDate.get(ChronoField.YEAR_OF_ERA);
+        int islamicMonth = islamicDate.get(ChronoField.MONTH_OF_YEAR);
+        int islamicDay = islamicDate.get(ChronoField.DAY_OF_MONTH);
+
+        // Check if the Islamic date is valid
+        if (islamicDay > islamicDate.lengthOfMonth()) {
+            // Adjust the Islamic date to the next valid date
+            islamicDay = 1;
+            islamicMonth++;
+
+            // Check if the Islamic month is valid
+            if (islamicMonth > 12) {
+                islamicMonth = 1;
+                islamicYear++;
+            }
+
+            // Update the Islamic date object with the adjusted values
+            islamicDate = HijrahChronology.INSTANCE.date(islamicYear, islamicMonth, islamicDay);
+        }
+
+//        // Convert the Gregorian date to an Islamic date
+//        HijrahDate islamicDate = HijrahChronology.INSTANCE.date(LocalDate.of(year, month, day));
+
+//        // Extract the Islamic date components
+//        int islamicYear = islamicDate.get(ChronoField.YEAR_OF_ERA);
+//        int islamicMonth = islamicDate.get(ChronoField.MONTH_OF_YEAR);
+//        int islamicDay = islamicDate.get(ChronoField.DAY_OF_MONTH);
+//
+
+
+
+        // Define a custom array of Islamic month lengths
+        int[] islamicMonthLengths = {
+                30, 29, 30, 29, 30, 29, 30, 29, 30, 29, 30, 29
+        };
+
+        // Define a custom array of Islamic month names
+        String[] islamicMonthNames = {
+                "Muharram", "Safar", "Rabi' al-Awwal", "Rabi' al-Thani",
+                "Jumada al-Ula", "Jumada al-Akhirah", "Rajab", "Sha'ban",
+                "Ramadan", "Shawwal", "Dhu al-Qidah", "Dhu al-Hijjah"
+        };
+
+//        // Get the name of the Islamic month
+//        String islamicMonthName = islamicMonthNames[islamicMonth - 1]; // Adjust for 0-based indexing
+//
+//        // Format the Islamic date as a string
+//        String islamicDateStr = islamicDay + " " + islamicMonthName + " " + islamicYear;
+//
+//
+//
+
+        // Log the current moon phase and Hijri day offset
+        Log.d("MoonPhaseView", "Current moon phase: " + islamicDay);
+        Log.d("MoonPhaseView", "Hijri day offset: " + islamicDay);
+
+
+        // Get the resource name based on the phase index
+        String resourceName = "moon" + islamicDay;
+
+        // Get the resource ID based on the resource name
+        int resourceId = getResources().getIdentifier(resourceName, "drawable", getPackageName());
+
+        // Set the moon phase image as the ImageView's source
+        moonImageView.setImageResource(resourceId);
+
+        // Format the Islamic date as a string
+        String islamicDateStr = islamicDay + " " + islamicMonthNames[islamicMonth - 1] + " " + islamicYear;
+
+
+        // Display the Islamic date on the TextView
+        islamicDateTextView.setText(islamicDateStr);
+
+
+    }
+
+    private void setMoonPhaseImage(int phaseIndex) {
+        // Get the resource ID based on the moon phase
+        int resourceId = getResources().getIdentifier("moon" + (phaseIndex + 1), "drawable", getPackageName());
+
+        // Set the moon phase image as the ImageView's source
+        moonImageView.setImageResource(resourceId);
+    }
+
+
+    private int calculateMoonPhase(int dayOfMonth) {
+        // Define the moon phase interval (in days)
+        int interval = 30;
+
+        // Calculate the phase index based on the day of the month
+        int phaseIndex = (dayOfMonth - 1) % interval;
+
+        return phaseIndex;
+    }
+
+
+
+    // ======================================= File Picker Dialog =======================================
+    private String getPathFromUri(Uri uri) {
+        // Implement the logic to convert the Uri to a file path using the ContentResolver
+        // This approach is similar to the third option mentioned in the previous response
+         path = null;
+        try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+                path = cursor.getString(columnIndex);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return path;
+    }
+
+// ****************************************** Addition And Removal of Times ***********************
+
+    // Method to handle the plus button click for a prayer time
+    private void handlePrayerTimePlusButtonClick(String prayerTime) {
+        switch (prayerTime) {
+            case "Fajr":
+                fajrCounter++;
+                if (fajrCounter >= 0) {
+                    fajrAdd++;
+                }
+                if (fajrCounter == 0) {
+                    fajrAdd = 0;
+                }
+                handleAddMinutesButtonClick(prayerTime, fajr24, fajrCounter);
+                break;
+            case "Zuhar":
+                zuharCounter++;
+                if (zuharCounter >= 0) {
+                    zuharAdd++;
+                }
+                if (zuharCounter == 0) {
+                    zuharAdd = 0;
+                }
+                handleAddMinutesButtonClick(prayerTime, zuhar24, zuharCounter);
+                break;
+            case "Asr":
+                asrCounter++;
+                if (asrCounter >= 0) {
+                    asrAdd++;
+                }
+                if (asrCounter == 0) {
+                    asrAdd = 0;
+                }
+                handleAddMinutesButtonClick(prayerTime, asr24, asrCounter);
+                break;
+            case "Maghrib":
+//                maghribCounter++;
+//                if (maghribCounter >= 0) {
+//                    maghribAdd++;
+//                }
+//                if (maghribCounter == 0) {
+//                    maghribAdd = 0;
+//                }
+//                handleAddMinutesButtonClick(prayerTime, maghrib24, maghribCounter);
+                break;
+            case "Isha":
+                ishaCounter++;
+                if (ishaCounter >= 0) {
+                    ishaAdd++;
+                }
+                if (ishaCounter == 0) {
+                    ishaAdd = 0;
+                }
+                handleAddMinutesButtonClick(prayerTime, isha24, ishaCounter);
+                break;
+        }
+    }
+
+    // Method to handle the minus button click for a prayer time
+    private void handlePrayerTimeMinusButtonClick(String prayerTime) {
+        switch (prayerTime) {
+            case "Fajr":
+                fajrCounter--;
+                handleMinusMinutesButtonClick(prayerTime, fajr24, fajrCounter);
+                if (fajrCounter >= 0) {
+                    fajrAdd++;
+                }
+                if (fajrCounter == 0) {
+                    fajrAdd = 0;
+                }
+                break;
+            case "Zuhar":
+                zuharCounter--;
+                handleMinusMinutesButtonClick(prayerTime, zuhar24, zuharCounter);
+                if (zuharCounter >= 0) {
+                    zuharAdd++;
+                }
+                if (zuharCounter == 0) {
+                    zuharAdd = 0;
+                }
+                break;
+            case "Asr":
+                asrCounter--;
+                handleMinusMinutesButtonClick(prayerTime, asr24, asrCounter);
+                if (asrCounter >= 0) {
+                    asrAdd++;
+                }
+                if (asrCounter == 0) {
+                    asrAdd = 0;
+                }
+                break;
+            case "Maghrib":
+//                maghribCounter--;
+//                handleMinusMinutesButtonClick(prayerTime, maghrib24, maghribCounter);
+//                if (maghribCounter >= 0) {
+//                    maghribAdd++;
+//                }
+//                if (maghribCounter == 0) {
+//                    maghribAdd = 0;
+//                }
+                break;
+            case "Isha":
+                ishaCounter--;
+                handleMinusMinutesButtonClick(prayerTime, isha24, ishaCounter);
+                if (ishaCounter >= 0) {
+                    ishaAdd++;
+                }
+                if (ishaCounter == 0) {
+                    ishaAdd = 0;
+                }
+                break;
+        }
+    }
+
+    // Method to handle the addition based on the count for a prayer time
+    private void handleAddMinutesButtonClick(String prayerTime, String prayerTime24, int addCount) {
+        LocalTime prayerTimeLocal = LocalTime.parse(prayerTime24, DateTimeFormatter.ofPattern("H:mm"));
+        LocalTime addedPrayerTimeLocal = prayerTimeLocal.plusMinutes(5);
+        String updatedPrayerTime24 = addedPrayerTimeLocal.format(DateTimeFormatter.ofPattern("H:mm"));
+
+
+
+        switch (prayerTime) {
+            case "Fajr":
+                // Add 5 minutes
+                fajr24 = updatedPrayerTime24;
+
+                // Assign 5 minutes to the next day
+                nextFajr24 = LocalTime.parse(nextfajr, DateTimeFormatter.ofPattern("H:mm"));
+                nextFajrTime24 = nextFajr24.plusMinutes(5);
+                nextfajr = nextFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                break;
+            case "Zuhar":
+                zuhar24 = updatedPrayerTime24;
+
+                // Assign 5 minutes to the next day
+                nextZuhar24 = LocalTime.parse(nextzuhar, DateTimeFormatter.ofPattern("H:mm"));
+                nextZuharTime24 = nextZuhar24.plusMinutes(5);
+                nextzuhar = nextZuharTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+
+                break;
+            case "Asr":
+                asr24 = updatedPrayerTime24;
+
+                // Assign 5 minutes to the next day
+                nextAsr24 = LocalTime.parse(nextasr, DateTimeFormatter.ofPattern("H:mm"));
+                nextAsrTime24 = nextAsr24.plusMinutes(5);
+                nextasr = nextAsrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+
+                break;
+            case "Maghrib":
+//                maghrib24 = updatedPrayerTime24;
+                break;
+            case "Isha":
+                isha24 = updatedPrayerTime24;
+
+                // Assign 5 minutes to the next day
+                nextIsha24 = LocalTime.parse(nextisha, DateTimeFormatter.ofPattern("H:mm"));
+                nextIshaTime24 = nextIsha24.plusMinutes(5);
+                nextisha = nextIshaTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+
+                break;
+        }
+
+        // Update the UI with the new prayer time
+        updatePrayerTimeUI(prayerTime, updatedPrayerTime24);
+    }
+
+    // Method to handle the subtraction based on the count for a prayer time
+    private void handleMinusMinutesButtonClick(String prayerTime, String prayerTime24, int addCount) {
+        LocalTime prayerTimeLocal = LocalTime.parse(prayerTime24, DateTimeFormatter.ofPattern("H:mm"));
+        LocalTime subtractedPrayerTimeLocal = prayerTimeLocal.minusMinutes(5);
+        String updatedPrayerTime24 = subtractedPrayerTimeLocal.format(DateTimeFormatter.ofPattern("H:mm"));
+
+        switch (prayerTime) {
+            case "Fajr":
+                fajr24 = updatedPrayerTime24;
+                // Subtract 5 minutes from the next day
+                nextFajr24 = LocalTime.parse(nextfajr, DateTimeFormatter.ofPattern("H:mm"));
+                nextFajrTime24 = nextFajr24.minusMinutes(5);
+                nextfajr = nextFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+                break;
+
+            case "Zuhar":
+                zuhar24 = updatedPrayerTime24;
+                // Subtract 5 minutes from the next day
+                nextZuhar24 = LocalTime.parse(nextzuhar, DateTimeFormatter.ofPattern("H:mm"));
+                nextZuharTime24 = nextZuhar24.minusMinutes(5);
+                nextzuhar = nextZuharTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+                break;
+
+            case "Asr":
+                asr24 = updatedPrayerTime24;
+                // Subtract 5 minutes from the next day
+                nextAsr24 = LocalTime.parse(nextasr, DateTimeFormatter.ofPattern("H:mm"));
+                nextAsrTime24 = nextAsr24.minusMinutes(5);
+                nextasr = nextAsrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+                break;
+
+            case "Maghrib":
+//                maghrib24 = updatedPrayerTime24;
+                break;
+            case "Isha":
+                isha24 = updatedPrayerTime24;
+                // Subtract 5 minutes from the next day
+                nextIsha24 = LocalTime.parse(nextisha, DateTimeFormatter.ofPattern("H:mm"));
+                nextIshaTime24 = nextIsha24.minusMinutes(5);
+                nextisha = nextIshaTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+                break;
+        }
+
+        // Update the UI with the new prayer time
+        updatePrayerTimeUI(prayerTime, updatedPrayerTime24);
+    }
+
+    // Method to update the UI with the new prayer time
+    private void updatePrayerTimeUI(String prayerTime, String updatedTime) {
+        TextView prayerTimeView = null;
+
+        switch (prayerTime) {
+            case "Fajr":
+                prayerTimeView = findViewById(R.id.fajr);
+                break;
+            case "Zuhar":
+                prayerTimeView = findViewById(R.id.zuhar);
+                break;
+            case "Asr":
+                prayerTimeView = findViewById(R.id.asr);
+                break;
+//            case "Maghrib":
+//                prayerTimeView = findViewById(R.id.maghrib);
+//                break;
+            case "Isha":
+                prayerTimeView = findViewById(R.id.isha);
+                break;
+        }
+
+        if (prayerTimeView != null) {
+            prayerTimeView.setText(updatedTime);
+        }
+    }
+
+
+    // ===================== Fajr buttons Plus & Minus =======================================
+    private void handleAddMinutesButtonClick() {
+        // Calculate the addition based on the counter value
+        isbtnFajrPlusPressed = true;
+        isFajrAddition = false;
+//        Log.wtf("MY ACITVITY", "Button fajrCounter - : " + fajrCounter);
+
+        // Perform calculations using the fajrCounter
+        performAdditionCalculations();
+    }
+    private void handleMinusMinutesButtonClick() {
+        // Calculate the deduction based on the counter value
+        isFajrDeductButtonPressed = true;
+        isFajrDeducted = false;
+//        Log.wtf("MY ACITVITY", "Button fajrCounter - : " + fajrCounter);
+
+        // Perform calculations using the fajrCounter
+        performSubtractionCalculations();
+    }
+
+    private void performAdditionCalculations() {
+        fajrTime24 = LocalTime.parse(fajr24, DateTimeFormatter.ofPattern("H:mm"));
+        addedFajrTime24 = fajrTime24.plusMinutes(5 );
+        fajr24 = addedFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+        nextFajr24 = LocalTime.parse(nextfajr, DateTimeFormatter.ofPattern("H:mm"));
+        nextFajrTime24 = nextFajr24.plusMinutes(5);
+        nextfajr = nextFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+        // Perform any other necessary calculations or operations
+    }
+
+    private void performSubtractionCalculations() {
+        fajrTime24 = LocalTime.parse(fajr24, DateTimeFormatter.ofPattern("H:mm"));
+//        deductedFajrTime24 = fajrTime24.minusMinutes(5 * Math.abs(fajrCounter));
+        deductedFajrTime24 = fajrTime24.minusMinutes(5 );
+
+        fajr24 = deductedFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+        nextFajr24 = LocalTime.parse(nextfajr, DateTimeFormatter.ofPattern("H:mm"));
+        nextFajrTime24 = nextFajr24.minusMinutes(5);
+        nextfajr = nextFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+        // Perform any other necessary calculations or operations
+    }
+
+
+
+
+    public void scrollIt() {
+
+        // For Scrolling text
+        TextView scrollingBox = findViewById(R.id.scrollingBox); // Replace `R.id.scrolling_box` with the actual ID of your TextView
+
+// Enable the marquee effect
+        scrollingBox.setSelected(true);
+        scrollingBox.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+        scrollingBox.setMarqueeRepeatLimit(-1); // Set the repeat limit to infinite (-1) or a desired number
+        scrollingBox.setHorizontallyScrolling(true); // Enable horizontal scrolling
+
+// Optionally, you can adjust the scroll speed
+        scrollingBox.setHorizontallyScrolling(true);
+        scrollingBox.setSingleLine(true);
+        scrollingBox.setFocusableInTouchMode(true);
+        scrollingBox.setFocusable(true);
+        scrollingBox.requestFocus();
+
+        // For One message.
+        // Set the text to be displayed in the scrollingBox
+        String textToScroll = "It has been related that: the Prophet said: Whoever builds a Masjid for (the sake of) Allah, be it small or large, " +
+                "then Allah will build a house for him in Paradise. Reference: Jami` at-Tirmidhi 319" +
+                "In-book reference: Book 2, Hadith 171, English translation : Vol. 1, Book 2, Hadith 319"+
+        "When 'Uthman b. 'Affan intended to build the mosque (of the Prophet) the people did not approve of it. They liked that " +
+                "it should be kept in the same state. Thereupon he said: I heard the Messenger of Allah (ﷺ) say: He who built a " +
+                "mosque for Allah, Allah would build a house for him like it in Paradise. Reference: Sahih Muslim 533b" +
+                "In-book reference: Book 5, Hadith 30 USC-MSA web (English) reference : Book 4, Hadith 1085"+
+                "Samurah reported that he wrote (a letter) to his sons: After (praising Allah and blessing the Prophet) that: The Messenger of #" +
+                        "Allah (ﷺ) used to command us to build mosques in our localities and keep them well and clean. Grade: Sahih (Al-Albani), Reference : Sunan Abi Dawud 456" +
+                        "In-book reference: Book 2, Hadith 66" +
+                        "English translation: Book 2, Hadith 456"+
+                "Allah's Messenger (ﷺ) (p.b.u.h) said, Anyone who takes a bath on Friday and cleans himself as much as he can and puts oil (on his hair) or scents himself; " +
+                        "and then proceeds for the prayer and does not force his way between two persons" +
+                        "(assembled in the mosque for the Friday prayer), and prays as much as is written for him and " +
+                        "remains quiet when the Imam delivers the Khutba, all his sins in between the present and the last Friday will be forgiven."+
+                        "Reference : Sahih al-Bukhari 910" +
+                        "In-book reference\t : Book 11, Hadith 34" +
+                        "USC-MSA web (English) reference: Vol. 2, Book 13, Hadith 33" +
+                        "(deprecated numbering scheme)";
+        scrollingBox.setText(textToScroll);
+
+        // FOr array messages
+//        final String[] textsToScroll =
+        {
+//                "It has been related that: the Prophet said: Whoever builds a Masjid for (the sake of) Allah, be it small or large, " +
+//                        "then Allah will build a house for him in Paradise. Reference: Jami` at-Tirmidhi 319" +
+//                        "In-book reference: Book 2, Hadith 171, English translation : Vol. 1, Book 2, Hadith 319",
+//                "When 'Uthman b. 'Affan intended to build the mosque (of the Prophet) the people did not approve of it. They liked that " +
+//                        "it should be kept in the same state. Thereupon he said: I heard the Messenger of Allah (ﷺ) say: He who built a " +
+//                        "mosque for Allah, Allah would build a house for him like it in Paradise. Reference: Sahih Muslim 533b" +
+//                        "In-book reference: Book 5, Hadith 30 USC-MSA web (English) reference : Book 4, Hadith 1085",
+//                "Samurah reported that he wrote (a letter) to his sons: After (praising Allah and blessing the Prophet) that: The Messenger of #" +
+//                        "Allah (ﷺ) used to command us to build mosques in our localities and keep them well and clean. Grade: Sahih (Al-Albani), Reference : Sunan Abi Dawud 456" +
+//                        "In-book reference: Book 2, Hadith 66" +
+//                        "English translation: Book 2, Hadith 456",
+//                "Allah's Messenger (ﷺ) (p.b.u.h) said, Anyone who takes a bath on Friday and cleans himself as much as he can and puts oil (on his hair) or scents himself; " +
+//                        "and then proceeds for the prayer and does not force his way between two persons" +
+//                        "(assembled in the mosque for the Friday prayer), and prays as much as is written for him and " +
+//                        "remains quiet when the Imam delivers the Khutba, all his sins in between the present and the last Friday will be forgiven."+
+//                "Reference : Sahih al-Bukhari 910" +
+//                        "In-book reference\t : Book 11, Hadith 34" +
+//                        "USC-MSA web (English) reference: Vol. 2, Book 13, Hadith 33" +
+//                        "(deprecated numbering scheme)",
+
+
+                // Add more texts as needed
+        };
+//        int currentIndex = 0;
+
+//        scrollingBox.setText(textsToScroll[currentIndex]);
+
+
+
+
+        // Call the animation for Throbbing...
+//        NoticeIDThrobbing();
+
+
+// Start the marquee scrolling
+        scrollingBox.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                scrollingBox.setSelected(true);
+            }
+        }, 1000); // Delay in milliseconds before the scrolling starts
+
+    }
+    public void FridayTextColor(){
+        // ************************************* Friday text Colour ********************************
+        final int[] colorIndex = {0};
+        int[] colorArray = {
+                android.graphics.Color.GRAY,
+//                android.graphics.Color.parseColor("#ded6d5"),  // Light Grey
+                android.graphics.Color.parseColor("#3d3938"),  // Light Grey
+
+        };
+
+        Calendar calendar = Calendar.getInstance();
+        int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
+        int hourOfDay = calendar.get(Calendar.HOUR_OF_DAY);
+
+        if (dayOfWeek == Calendar.FRIDAY && hourOfDay >= 12 && hourOfDay < 14) {
+
+            //         Update the Timeings every set time
+            runnable = new Runnable() {
+                @SuppressLint("SetText")
+                @Override
+                public void run() {
+                    handler.postDelayed(this, 2000);
+
+                    int nextColorIndex = (colorIndex[0] + 1) % colorArray.length;
+
+                    View yourView = findViewById(R.id.friday);
+                    yourView.setBackgroundColor(colorArray[colorIndex[0]]);
+
+                    colorIndex[0] = nextColorIndex;
+
+
+                }
+            };
+            handler.postDelayed(runnable, 0);
+        }
+    }
+    private void NoticeIDThrobbing() {
+        // Set the initial visibility of textView2 to invisible
+        TextView NoticeMessage = findViewById(R.id.Noticeid); // Replace `R.id.textView2` with the actual ID of your TextView
+        NoticeMessage.setVisibility(View.INVISIBLE);
+
+// Create an AlphaAnimation for the fade in and out effect
+        AlphaAnimation fadeInOutAnimation = new AlphaAnimation(0f, 2f);
+        fadeInOutAnimation.setDuration(1000); // Duration for each fade in/out animation
+        fadeInOutAnimation.setFillAfter(true);
+        fadeInOutAnimation.setRepeatMode(Animation.REVERSE); // Reverse the animation
+        fadeInOutAnimation.setRepeatCount(Animation.INFINITE); // Repeat the animation infinitely
+        fadeInOutAnimation.setInterpolator(new AccelerateDecelerateInterpolator());
+
+
+// Create a Handler to schedule the animation
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                NoticeMessage.setVisibility(View.VISIBLE);
+                NoticeMessage.startAnimation(fadeInOutAnimation);
+            }
+        }, 1000); // Delay in milliseconds before starting the animation
+
+
+    }
+
+
+    private void replaceFile() {
+        // Check if a file has been loaded
+        if (mFile == null) {
+            Toast.makeText(this, "Please load a file first", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // Read the loaded file and copy its contents to timing.xls
+        try {
+            FileInputStream inputStream = new FileInputStream(mFile);
+            FileOutputStream outputStream = new FileOutputStream(new File(getExternalFilesDir(null), "timing.xls"));
+            if (outputStream == null) {
+                path = "timings.xls";
+
+            } else {
+                path = outputStream.toString();
+            }
+
+            byte[] buffer = new byte[6024];
+            int length;
+            while ((length = inputStream.read(buffer)) > 0) {
+                outputStream.write(buffer, 0, length);
+            }
+
+            inputStream.close();
+            outputStream.close();
+
+            Toast.makeText(this, "File has been replaced", Toast.LENGTH_LONG).show();
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private void SetTimes() {
+
+        CharSequence dt1 = DateFormat.format("EEE", d.getTime());
+        Log.wtf("MY ACITVITY", "Day of the Week: " + dt1.toString());
+
+
+        CharSequence currentdate = DateFormat.format("yyyy-MM-dd HH:mm:ss", d.getTime());
+        Log.wtf("My Activity", "current date : " + currentdate);
+
+        friday = "13:40";
+        friday24 = currentdate.toString() + friday;
+        fridayCheck = dt1.toString();
+
+        Log.wtf("MY ACITVITY", "fridayCheck: " + fridayCheck);
+        Log.wtf("MY ACITVITY", "fajr24: " + fajr24);
+
+
+        if (Objects.equals(fridayCheck, "Fri")) {
+            FridayCheck = true;
+            Log.wtf("MY ACITVITY", "Current date DT: " + dt1.toString());
+            Log.wtf("MY ACITVITY", "Friday Check matched");
+        }
+    }
+
+
+    // ========== change friday timings  ==========
+
+    private void ChangeFridayTiming() {
+        {
+
+
+        }
+    }
+
+    private void hidePrayerButtons() {
+
+
+        btnFajrPlus.setVisibility(View.GONE);
+        btnFajrMinus.setVisibility(View.GONE);
+
+        btnZuharPlus.setVisibility(View.GONE);
+        btnZuharMinus.setVisibility(View.GONE);
+        btnAsrPlus.setVisibility(View.GONE);
+        btnAsrMinus.setVisibility(View.GONE);
+        btnMaghribPlus.setVisibility(View.GONE);
+        btnMaghribMinus.setVisibility(View.GONE);
+        btnIshaPlus.setVisibility(View.GONE);
+        btnIshaMinus.setVisibility(View.GONE);
+
+        btnFridayPlus.setVisibility(View.GONE);
+        btnFridayMinus.setVisibility(View.GONE);
+
+        btnNotice.setVisibility(View.GONE);
+        btnLoad.setVisibility(View.GONE);
+        btnRefresh.setVisibility(View.GONE);
+
+//        hoursView.setVisibility(View.GONE);
+//        minutesView.setVisibility(View.GONE);
+//        secondsView.setVisibility(View.GONE);
+
+        btnHijriPlus.setVisibility(View.GONE);
+        btnHijriMinus.setVisibility(View.GONE);
+
+        IBANBox.setVisibility(View.VISIBLE);
+        scrollingBox.setVisibility(View.VISIBLE);
+
+        // Set flag
+        isPrayerButtonsVisible = false;
+    }
+
+    private void showPrayerButtons() {
+        btnFajrPlus.setVisibility(View.VISIBLE);
+        btnFajrMinus.setVisibility(View.VISIBLE);
+
+        btnZuharPlus.setVisibility(View.VISIBLE);
+        btnZuharMinus.setVisibility(View.VISIBLE);
+        btnAsrPlus.setVisibility(View.VISIBLE);
+        btnAsrMinus.setVisibility(View.VISIBLE);
+        btnMaghribPlus.setVisibility(View.VISIBLE);
+        btnMaghribMinus.setVisibility(View.VISIBLE);
+        btnIshaPlus.setVisibility(View.VISIBLE);
+        btnIshaMinus.setVisibility(View.VISIBLE);
+
+        btnFridayPlus.setVisibility(View.VISIBLE);
+        btnFridayMinus.setVisibility(View.VISIBLE);
+
+//        btnNotice.setVisibility(View.VISIBLE);
+//        btnLoad.setVisibility(View.VISIBLE);
+        btnRefresh.setVisibility(View.VISIBLE);
+
+
+//        hoursView.setVisibility(View.VISIBLE);
+//        minutesView.setVisibility(View.VISIBLE);
+//        secondsView.setVisibility(View.VISIBLE);
+
+        NoticeText.setVisibility(View.VISIBLE);
+
+        btnHijriPlus.setVisibility(View.VISIBLE);
+        btnHijriMinus.setVisibility(View.VISIBLE);
+
+
+        // Bring them back if All other are hidden
+        IBANBox.setVisibility(View.GONE);
+        scrollingBox.setVisibility(View.GONE);
+
+
+
+        // Show other prayer buttons up to Isha
+        isPrayerButtonsVisible = true;
+    }
+
+
+    private void UI() {
+
+        fajrLable = findViewById(R.id.fajrLabel);
+        zuharLable = findViewById(R.id.zuharLabel);
+        asrLable = findViewById(R.id.asrLabel);
+        maghribLable = findViewById(R.id.maghribLabel);
+        ishaLable = findViewById(R.id.ishaLabel);
+
+
+        dialog = new AlertDialog.Builder(this).create();
+        editText = new EditText(this);
+        dialog.setTitle("Edit The Notice");
+        dialog.setView(editText);
+
+
+    }
+
+
+    // refresh UI
+    private void Refresh() {
+        Refreshbtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                UI();
+                ChangeNotice();
+                ChangeFridayTiming();
+//                countDownStart();
+                Refresh = true;
+                toastMessage("Refreshed");
+
+
+            }
+        });
+    }
+
+    // Change Mosque notice board message.
+    private void ChangeNotice() {
+        Noticebutton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                AlertDialog.Builder mydialog = new AlertDialog.Builder(MainActivity.this);
+                mydialog.setTitle("Edit Notice!");
+
+                final EditText editText = new EditText(MainActivity.this);
+                mydialog.setView(editText);
+
+                mydialog.setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        Notice = editText.getText().toString();
+                        NoticeText.setText(Notice);
+                        Toast.makeText(MainActivity.this, "Notice Changed!!", Toast.LENGTH_LONG).show();
+
+                    }
+                });
+                mydialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        dialogInterface.cancel();
+                    }
+                });
+                mydialog.show();
+
+            }
+        });
+
+    }
+
+
+    public void dFajr(String value) {
+        Fajr = findViewById(R.id.fajr);
+        Fajr.setText(value);
+    }
+
+
+    public void dZuhar(String value) {
+        Zuhar = findViewById(R.id.zuhar);
+        Zuhar.setText(value);
+    }
+
+    public void dAsr(String value) {
+        Asr = findViewById(R.id.asr);
+        Asr.setText(value);
+    }
+
+    public void dMaghrib(String value) {
+        Magrib = findViewById(R.id.maghrib);
+        Magrib.setText(value);
+    }
+
+    public void dIsha(String value) {
+        Isha = findViewById(R.id.isha);
+        Isha.setText(value);
+    }
+
+    public void Countdowntime(long time) {
+        long Hours = time / (60 * 60 * 1000) % 24;
+        long Minutes = time / (60 * 1000) % 60;
+        long Seconds = time / 1000 % 60;
+        @SuppressLint("DefaultLocale") String Hoursst = String.format("%02d", Hours);
+        @SuppressLint("DefaultLocale") String Minutesst = String.format("%02d", Minutes);
+        @SuppressLint("DefaultLocale") String Secondsst = String.format("%02d", Seconds);
+
+        countdowndt = Hoursst + ":" + Minutesst + ":" + Secondsst;
+
+//        long days = (int) (time / (1000 * 60 * 60 * 24));
+//        long hours = (int) ((time - (1000 * 60 * 60 * 24 * days)) / (1000 * 60 * 60));
+//        long mins = (int) (time - (1000 * 60 * 60 * 24 * days) - (1000 * 60 * 60 * hours)) / (1000 * 60);
+//        long secs = (int) (time - (1000 * 60 * 60 * 24 * days) - (1000 * 60 * 60 * hours) - (1000 * 60 * mins)) / 1000;
+//
+//        countdowndt = String.format("%02d", hours) + ":" + String.format("%02d", mins) + ":" + String.format("%02d", secs);
+    }
+
+    private void toastMessage(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+    }
+
+
+    private void clearBackground() {
+        BoxIsha.setBackgroundColor(Color.TRANSPARENT);
+        BoxZuhar.setBackgroundColor(Color.TRANSPARENT);
+        BoxAsr.setBackgroundColor(Color.TRANSPARENT);
+        BoxMaghrib.setBackgroundColor(Color.TRANSPARENT);
+        BoxFajr.setBackgroundColor(Color.TRANSPARENT);
+    }
+
+
+    //    =================================   Play Field =================================
+    public void startUpdatingClockEverySecond() {
+        // Create a countdown timer with a tick interval of 1 second (1000 milliseconds)
+        new CountDownTimer(Long.MAX_VALUE, 1000) {
+            public void onTick(long millisUntilFinished) {
+                CalculateTimings(); // Call the method to update the clock every second
+            }
+
+            public void onFinish() {
+                // Timer finished (not relevant for updating the clock)
+            }
+        }.start();
+    }
+
+
+    // Next Day's Prayer Times After Maghrib is passed
+    public void NextDayPrayerTimes() {
+        // Assuming you have a method to fetch the updated prayer times for the next day
+        String[] updatedPrayerTimes = {nextfajr, nextzuhar, nextasr, nextMaghrib, nextisha};
+
+        // Check if the fetched prayer times are valid
+        if (updatedPrayerTimes != null && updatedPrayerTimes.length == 5) {
+            try {
+                DateTimeFormatter FajrinputFormat = DateTimeFormatter.ofPattern("H:mm"); // Assuming the prayer times are in 12-hour format
+
+                // Convert the updated prayer times to LocalTime objects
+                LocalTime updatedFajr = LocalTime.parse(updatedPrayerTimes[0], FajrinputFormat);
+                LocalTime updatedZuhar = LocalTime.parse(updatedPrayerTimes[1], FajrinputFormat);
+                LocalTime updatedAsr = LocalTime.parse(updatedPrayerTimes[2], FajrinputFormat);
+                LocalTime updatedMaghrib = LocalTime.parse(updatedPrayerTimes[3], FajrinputFormat);
+                LocalTime updatedIsha = LocalTime.parse(updatedPrayerTimes[4], FajrinputFormat);
+
+                // Get the current date and time
+                LocalDate currentDate = LocalDate.now();
+                LocalTime currentTime = LocalTime.now();
+                LocalDateTime currentDateTime = LocalDateTime.of(currentDate, currentTime);
+
+                // Check if it is after the Isha prayer time
+                LocalTime ishaTime = LocalTime.parse(maghrib24, FajrinputFormat);
+                LocalDateTime ishaDateTime = LocalDateTime.of(currentDate, ishaTime);
+
+                if (currentDateTime.isAfter(ishaDateTime)) {
+
+                    AddMinutes();
+
+                    // Update the prayer times array with the updated values
+                    fajr24 = nextfajr;
+                    zuhar24 = nextzuhar;
+                    asr24 = nextasr;
+                    maghrib24 = nextMaghrib;
+                    isha24 = nextisha;
+
+                    dFajr(fajr24);
+                    dZuhar(zuhar24);
+                    dAsr(asr24);
+                    dMaghrib(maghrib24);
+                    dIsha(isha24);
+
+//                    fajr24 = updatedPrayerTimes[0];
+//                    zuhar24 = updatedPrayerTimes[1];
+//                    asr24 = updatedPrayerTimes[2];
+//                    maghrib24 = updatedPrayerTimes[3];
+//                    isha24 = updatedPrayerTimes[4];
+
+
+
+                }
+            } catch (DateTimeParseException e) {
+                e.printStackTrace();
+                // Handle parsing errors if necessary
+            }
+        } else {
+            // Handle the case where the fetched prayer times are not valid
+        }
+    }
+
+    // Calculate pryare times etc -------------------------------------
+    public void CalculateTimings() {
+        DateTimeFormatter inputFormat = DateTimeFormatter.ofPattern("HH:mm"); // Assuming the prayer times are in 12-hour format
+        DateTimeFormatter outputFormat = DateTimeFormatter.ofPattern("HH:mm"); // Format to 24-hour format
+        DateTimeFormatter FajrinputFormat = DateTimeFormatter.ofPattern("H:mm"); // Assuming the prayer times are in 12-hour format
+
+        try {
+            // Convert prayer times to LocalTime objects
+            LocalTime fajrTime = LocalTime.parse(fajr24.trim(), FajrinputFormat);
+            LocalTime zuharTime = LocalTime.parse(zuhar24.trim(), FajrinputFormat);
+            LocalTime asrTime = LocalTime.parse(asr24.trim(), FajrinputFormat);
+            LocalTime magribTime = LocalTime.parse(maghrib24.trim(), FajrinputFormat);
+            LocalTime ishaTime = LocalTime.parse(isha24.trim(), FajrinputFormat);
+
+            // Add 12 hours to each prayer time except fajr To avoid time Format ERROR
+            fajrTime = fajrTime.plusHours(0);
+            zuharTime = zuharTime.plusHours(12);
+            asrTime = asrTime.plusHours(12);
+            magribTime = magribTime.plusHours(12);
+            ishaTime = ishaTime.plusHours(12);
+
+            // Get the current date and time
+            LocalDate currentDate = LocalDate.now();
+            LocalTime currentTime = LocalTime.now();
+            LocalDateTime currentDateTime = LocalDateTime.of(currentDate, currentTime);
+            TextView[] boxBackgrounds = {BoxFajr, BoxZuhar, BoxAsr, BoxMaghrib, BoxIsha};
+
+            // Calculate the next prayer index
+            int nextPrayerIndex = -1;
+            LocalTime[] prayerTimes = {fajrTime, zuharTime, asrTime, magribTime, ishaTime};
+            String[] prayerNames = {"Fajr", "Zuhar", "Asr", "Maghrib", "Isha"};
+
+
+            for (int i = 0; i < prayerTimes.length; i++) {
+                if (currentDateTime.toLocalTime().compareTo(prayerTimes[i]) <= 0 || i == prayerTimes.length - 1) {
+                    nextPrayerIndex = i;
+                    Log.d("My Activity", "Next Prayer: " + prayerNames[nextPrayerIndex] + " " + prayerTimes[i]);
+                    break;
+                }
+            }
+
+            DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy"); // Updated date format
+            Log.d("My Activity", "Check Today's Date: " + currentDate.format(dateFormat)); // Format the current date
+
+            if (nextPrayerIndex != -1) {
+                LocalTime nextPrayerTime = prayerTimes[nextPrayerIndex];
+                LocalDateTime nextPrayerDateTime = LocalDateTime.of(currentDate, nextPrayerTime);
+
+                // Check if the current time is before the next prayer
+                if (currentDateTime.isBefore(nextPrayerDateTime)) {
+                    // Remaining time until the next prayer
+                    Duration remainingTime = Duration.between(currentDateTime, nextPrayerDateTime);
+
+                    // Convert remaining time to milliseconds
+                    long remainingMillis = remainingTime.toMillis();
+//                    Log.d("My Activity", "IF Block: Time remaining in Millis: " + remainingMillis);
+
+                    Countdowntime(remainingMillis);
+                    countdowntxt.setText(countdowndt);
+                    Namaz.setText(prayerNames[nextPrayerIndex]);
+                    Log.wtf("My Activity", "next prayer: " + prayerNames[nextPrayerIndex]);
+
+                    // Set the background for the corresponding prayer
+                    clearBackground();
+                    boxBackgrounds[nextPrayerIndex].setBackgroundResource(R.drawable.textview_outline);
+
+
+
+
+                    // ******************* [0][0]  FlipClock ****************************
+//                    updateFlipClockDisplay(remainingMillis);
+
+
+//                     TextView timerLabel;
+//                     CustomDigitView digitView;
+
+//                    timerLabel = findViewById(R.id.txtDigitClock);
+//                    digitView = findViewById(R.id.custom_digit_view);
+
+
+
+
+//                    // call the updateFlip function
+//                    runOnUiThread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                        }
+//                    });
+
+                    // ========================== ANIMATION ===============================
+                    startFadeInOutAnimation(boxBackgrounds, nextPrayerIndex);
+
+
+                    // ====================================== Update the Timings =========================
+                    AddMinutes();
+
+                    dFajr(fajr24);
+                    dZuhar(zuhar24);
+                    dAsr(asr24);
+                    dMaghrib(maghrib24);
+                    dIsha(isha24);
+
+                } else {
+
+                    // If Isha time is passed
+//                    Log.wtf("My Activity", "UpdatedPRayertimes called");
+
+                    // Calculate the next prayer's datetime of the following day
+                    LocalDateTime nextDayDateTime = currentDateTime.plusDays(1);
+                    LocalDateTime nextPrayerNextDayDateTime = LocalDateTime.of(nextDayDateTime.toLocalDate(), prayerTimes[0]);
+
+                    // Remaining time until the next prayer of the following day
+                    Duration remainingTime = Duration.between(currentDateTime, nextPrayerNextDayDateTime);
+
+                    // Convert remaining time to milliseconds
+                    long remainingMillis = remainingTime.toMillis();
+
+//                    Log.d("My Activity", "Else block: Time remaining in Millis: " + remainingMillis);
+
+                    Countdowntime(remainingMillis);
+                    countdowntxt.setText(countdowndt);
+
+                    Namaz.setText(prayerNames[0]);
+                    // Set UI for next day prayer times.
+                    NextDayPrayerTimes();
+
+                    // Set the background for the corresponding prayer
+                    clearBackground();
+                    BoxFajr.setBackgroundResource(R.drawable.textview_outline);
+
+                    // Set the initial visibility of the view to invisible
+                    BoxFajr.setVisibility(View.INVISIBLE);
+
+
+//                    updateFlipClockDisplay(remainingMillis);
+
+//                    // call the updateFlip function
+//                    runOnUiThread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                        }
+//                    });
+
+                    // **************** Animation ****************
+
+
+// Create an AlphaAnimation for the fade in and out effect
+                    AlphaAnimation fadeInOutAnimation = new AlphaAnimation(0f, 2f);
+                    fadeInOutAnimation.setDuration(2000); // Duration for each fade in/out animation
+                    fadeInOutAnimation.setFillAfter(true);
+                    fadeInOutAnimation.setRepeatMode(Animation.REVERSE); // Reverse the animation
+                    fadeInOutAnimation.setRepeatCount(Animation.INFINITE); // Repeat the animation infinitely
+                    fadeInOutAnimation.setInterpolator(new AccelerateDecelerateInterpolator());
+
+// Schedule the animation to start after a delay
+                    Handler handler = new Handler();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            // Make the view visible and start the animation
+                            BoxFajr.setVisibility(View.VISIBLE);
+                            BoxFajr.startAnimation(fadeInOutAnimation);
+                        }
+                    }, 2000); // Delay in milliseconds before starting the animation
+
+                    Log.wtf("My Activity", "next prayer: " + prayerNames[nextPrayerIndex]);
+
+
+                    AddMinutes();
+
+                    dFajr(fajr24);
+                    dZuhar(zuhar24);
+                    dAsr(asr24);
+                    dMaghrib(maghrib24);
+                    dIsha(isha24);
+
+
+                }
+
+            }
+
+        } catch (DateTimeParseException e) {
+            e.printStackTrace();
+            // Handle parsing errors
+        }
+    }
+
+
+
+    private void startFadeInOutAnimation(View[] boxBackgrounds, int nextPrayerIndex) {
+        // Set the initial visibility of the view to invisible
+        boxBackgrounds[nextPrayerIndex].setVisibility(View.INVISIBLE);
+
+        // Create an AlphaAnimation for the fade in and out effect
+        AlphaAnimation fadeInOutAnimation = new AlphaAnimation(0f, 3f);
+        fadeInOutAnimation.setDuration(2000); // Duration for each fade in/out animation
+        fadeInOutAnimation.setFillAfter(true);
+        fadeInOutAnimation.setRepeatMode(Animation.REVERSE); // Reverse the animation
+        fadeInOutAnimation.setRepeatCount(Animation.INFINITE); // Repeat the animation infinitely
+        fadeInOutAnimation.setInterpolator(new AccelerateDecelerateInterpolator());
+
+        // Schedule the animation to start after a delay
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                // Make the view visible and start the animation
+                boxBackgrounds[nextPrayerIndex].setVisibility(View.VISIBLE);
+                boxBackgrounds[nextPrayerIndex].startAnimation(fadeInOutAnimation);
+            }
+        }, 2000); // Delay in milliseconds before starting the animation
+    }
+
+
+    private void GetTime(String... filePath) {
+        if (filePath.length > 0) {
+            // A file path was provided, use it
+            path = filePath[0];
+        } else {
+            // No file path provided, use the default
+            path = "timings.xls";
+        }
+
+        try {
+            AssetManager am = getAssets();
+            InputStream is = am.open(path);
+            Workbook wb = Workbook.getWorkbook(is);
+
+            Sheet sheet = wb.getSheet(0);
+            int numColumns = sheet.getColumns();
+            int numRows = sheet.getRows();
+            int dateColumnIndex = 0;
+            int fajrColumnIndex = 1;
+            int zuharColumnIndex = 2;
+            int asrColumnIndex = 3;
+            int magribColumnIndex = 4;
+            int ishaColumnIndex = 5;
+
+            // Match the date format with the Excel date format to load the data
+            String currentDateString = DateFormat.format("MM/dd/yyyy", new Date()).toString();
+
+            List<String[]> data = new ArrayList<>();
+
+            // Load all the data into a list
+            for (int row = 0; row < numRows; row++) {
+                String[] rowData = new String[numColumns];
+                for (int col = 0; col < numColumns; col++) {
+                    Cell cell = sheet.getCell(col, row);
+                    rowData[col] = cell.getContents();
+                }
+                data.add(rowData);
+            }
+
+            // Find the row with the current date
+            int currentRow = -1;
+            String currentDate = "";
+            if (currentDateString.length() >= 10) {
+                currentDate = currentDateString.substring(0, 10); // Extract date part
+            }
+            for (int row = 0; row < data.size(); row++) {
+                String[] rowData = data.get(row);
+                String cellValue = rowData[dateColumnIndex];
+                String cellDate = "";
+                if (cellValue.length() >= 10) {
+                    // Extract date part from cell value with different format
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
+                    Date cellDateObj = dateFormat.parse(cellValue);
+                    SimpleDateFormat outputFormat = new SimpleDateFormat("MM/dd/yyyy");
+                    cellDate = outputFormat.format(cellDateObj);
+                }
+                Log.d("My Activity", "Cell value: " + cellValue);
+                Log.d("My Activity", "Cell date: " + cellDate);
+                if (cellDate.equals(currentDate)) {
+                    currentRow = row;
+                    Log.d("My Activity", "Today's Date Matched: " + cellValue);
+
+                    break;
+                }
+            }
+
+
+            if (currentRow != -1) {
+                // Current date found in the data
+                CharSequence currentdate = DateFormat.format("MM/dd/yyyy HH:mm:ss", d.getTime());
+                Log.wtf("My Activity", "System Date & Time: " + currentdate);
+
+                String[] currentRowData = data.get(currentRow);
+                String fajrTime = currentRowData[fajrColumnIndex].trim();
+                String zuharTime = currentRowData[zuharColumnIndex].trim();
+                String asrTime = currentRowData[asrColumnIndex].trim();
+                String magribTime = currentRowData[magribColumnIndex].trim();
+                String ishaTime = currentRowData[ishaColumnIndex].trim();
+
+                // Get the prayer times for the next day
+                int nextDayRow = (currentRow + 1) % data.size();
+                String[] nextDayRowData = data.get(nextDayRow);
+                String nextDayFajrTime = nextDayRowData[fajrColumnIndex].trim();
+                String nextDayZuharTime = nextDayRowData[zuharColumnIndex].trim();
+                String nextDayAsrTime = nextDayRowData[asrColumnIndex].trim();
+                String nextDayMagribTime = nextDayRowData[magribColumnIndex].trim();
+                String nextDayIshaTime = nextDayRowData[ishaColumnIndex].trim();
+
+                // Store the next day's prayer times
+                nextfajr = nextDayFajrTime.trim();
+                nextzuhar = nextDayZuharTime.trim();
+                nextasr = nextDayAsrTime.trim();
+                nextMaghrib = nextDayMagribTime.trim();
+                nextisha = nextDayIshaTime.trim();
+
+//                // Update the UI with the prayer times
+//                dFajr(fajrTime);
+//                dZuhar(zuharTime);
+//                dAsr(asrTime);
+//                dMaghrib(magribTime);
+//                dIsha(ishaTime);
+
+                fajr24 = fajrTime.trim();
+                zuhar24 = zuharTime;
+                asr24 = asrTime;
+                maghrib24 = magribTime;
+                isha24 = ishaTime;
+
+                // Update the UI with the prayer times
+                AddMinutes();
+
+
+            } else {
+                // Current date not found in the data
+                Log.wtf("My Activity", "Current Date Did Match in The Excel Data");
+                replaceFile();
+            }
+
+
+        } catch (IOException | BiffException e) {
+            e.printStackTrace();
+            return;
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // PUll data from exel file
+    private void GetTime31July2023(String... filePath) {
+//        if (filePath.length > 0) {
+//            // A file path was provided, use it
+//            path = filePath[0];
+//        } else {
+//            // No file path provided, use the default
+//            path = "timings.xls";
+//        }
+//
+//        try {
+//            AssetManager am = getAssets();
+//            InputStream is = am.open(path);
+//            Workbook wb = Workbook.getWorkbook(is);
+
+        String path;
+        if (filePath.length > 0 && filePath[0] != null) {
+            // A file path was provided, use it
+            path = filePath[0];
+        } else {
+            // No file path provided, use the default "timings.xls"
+            path = "timings.xls";
+        }
+
+        try {
+            InputStream is;
+
+//            if (path.startsWith("timings.xls"))
+            if (path != null)
+            {
+                // Use the default "timings.xls" file from the assets folder
+                AssetManager am = getAssets();
+                is = am.open(path);
+            } else {
+                // Use the selected file
+                File file = new File(path);
+                is = new FileInputStream(file);
+            }
+
+            Workbook wb = Workbook.getWorkbook(is);
+
+
+            Sheet sheet = wb.getSheet(0);
+            int numColumns = sheet.getColumns();
+            int numRows = sheet.getRows();
+            int dateColumnIndex = 0;
+            int fajrColumnIndex = 1;
+            int zuharColumnIndex = 2;
+            int asrColumnIndex = 3;
+            int magribColumnIndex = 4;
+            int ishaColumnIndex = 5;
+
+            // Match the date format with the Excel date format to load the data
+            String currentDateString = DateFormat.format("MM/dd/yyyy", new Date()).toString();
+
+            List<String[]> data = new ArrayList<>();
+
+            // Load all the data into a list
+            for (int row = 0; row < numRows; row++) {
+                String[] rowData = new String[numColumns];
+                for (int col = 0; col < numColumns; col++) {
+                    Cell cell = sheet.getCell(col, row);
+                    rowData[col] = cell.getContents();
+                }
+                data.add(rowData);
+            }
+
+            // Find the row with the current date
+            int currentRow = -1;
+            String currentDate = "";
+            if (currentDateString.length() >= 10) {
+                currentDate = currentDateString.substring(0, 10); // Extract date part
+            }
+            for (int row = 0; row < data.size(); row++) {
+                String[] rowData = data.get(row);
+                String cellValue = rowData[dateColumnIndex];
+                String cellDate = "";
+                if (cellValue.length() >= 10) {
+                    // Extract date part from cell value with different format
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
+                    Date cellDateObj = dateFormat.parse(cellValue);
+                    SimpleDateFormat outputFormat = new SimpleDateFormat("MM/dd/yyyy");
+                    cellDate = outputFormat.format(cellDateObj);
+                }
+                Log.d("My Activity", "Cell value: " + cellValue);
+                Log.d("My Activity", "Cell date: " + cellDate);
+                if (cellDate.equals(currentDate)) {
+                    currentRow = row;
+                    Log.d("My Activity", "Today's Date Matched: " + cellValue);
+
+                    break;
+                }
+            }
+
+
+            if (currentRow != -1) {
+                // Current date found in the data
+                CharSequence currentdate = DateFormat.format("MM/dd/yyyy HH:mm:ss", d.getTime());
+                Log.wtf("My Activity", "System Date & Time: " + currentdate);
+
+                String[] currentRowData = data.get(currentRow);
+                String fajrTime = currentRowData[fajrColumnIndex].trim();
+                String zuharTime = currentRowData[zuharColumnIndex].trim();
+                String asrTime = currentRowData[asrColumnIndex].trim();
+                String magribTime = currentRowData[magribColumnIndex].trim();
+                String ishaTime = currentRowData[ishaColumnIndex].trim();
+
+                // Get the prayer times for the next day
+                int nextDayRow = (currentRow + 1) % data.size();
+                String[] nextDayRowData = data.get(nextDayRow);
+                String nextDayFajrTime = nextDayRowData[fajrColumnIndex].trim();
+                String nextDayZuharTime = nextDayRowData[zuharColumnIndex].trim();
+                String nextDayAsrTime = nextDayRowData[asrColumnIndex].trim();
+                String nextDayMagribTime = nextDayRowData[magribColumnIndex].trim();
+                String nextDayIshaTime = nextDayRowData[ishaColumnIndex].trim();
+
+                ////////////////////////////////////////////////////////////////////
+                //////////////////////////////////////////////////////////////////////////////////
+
+                // Store the next day's prayer times
+                nextfajr = nextDayFajrTime.trim();
+                nextzuhar = nextDayZuharTime.trim();
+                nextasr = nextDayAsrTime.trim();
+                nextMaghrib = nextDayMagribTime.trim();
+                nextisha = nextDayIshaTime.trim();
+
+//                AddMinutes();
+
+                fajr24 = fajrTime.trim();
+                zuhar24 = zuharTime;
+                asr24 = asrTime;
+                maghrib24 = magribTime;
+                isha24 = ishaTime;
+
+               AddMinutes();
+
+
+
+            } else {
+                // Current date not found in the data
+                Log.wtf("My Activity", "Current Date Did Match in The Excel Data");
+                replaceFile();
+            }
+
+
+        } catch (IOException | BiffException e) {
+            e.printStackTrace();
+            return;
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+
+    private void AddMinutes() {
+        // ================================== ADD Minutes =================================
+
+            try {
+                dFajr(fajr24);
+                dZuhar(zuhar24);
+                dAsr(asr24);
+                dMaghrib(maghrib24);
+                dIsha(isha24);
+                
+                } catch (DateTimeParseException e) {
+                    e.printStackTrace();
+                }
+
+        // Deduct 5 minutes from time if button is pressed
+        if (isZuharDeductButtonPressed && !isZuharDeducted) {
+            try {
+                LocalTime zuharTime24 = LocalTime.parse(zuhar24, DateTimeFormatter.ofPattern("H:mm"));
+                LocalTime deductedZuharTime24 = zuharTime24.minusMinutes(5);
+                zuhar24 = deductedZuharTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                // Set the flag to indicate deduction has been made
+                isZuharDeducted = true;
+                isZuharDeductButtonPressed = false;
+            } catch (DateTimeParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (isZuharAddMinutesPressed && !isZuharAddition) {
+            try {
+                LocalTime zuharTime24 = LocalTime.parse(zuhar24, DateTimeFormatter.ofPattern("H:mm"));
+                LocalTime addedZuharTime24 = zuharTime24.plusMinutes(5);
+                zuhar24 = addedZuharTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                // Set the flag to indicate addition has been made
+                isZuharAddition = true;
+                isZuharAddMinutesPressed = false;
+            } catch (DateTimeParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (isAsrDeductButtonPressed && !isAsrDeducted) {
+            try {
+                LocalTime asrTime24 = LocalTime.parse(asr24, DateTimeFormatter.ofPattern("H:mm"));
+                LocalTime deductedAsrTime24 = asrTime24.minusMinutes(5);
+                asr24 = deductedAsrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                // Set the flag to indicate deduction has been made
+                isAsrDeducted = true;
+                isAsrDeductButtonPressed = false;
+            } catch (DateTimeParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // =========== Asr =============
+        if (isAsrDeductButtonPressed && !isAsrDeducted) {
+            try {
+                LocalTime asrTime24 = LocalTime.parse(asr24, DateTimeFormatter.ofPattern("H:mm"));
+                LocalTime deductedAsrTime24 = asrTime24.minusMinutes(5);
+                asr24 = deductedAsrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                // Set the flag to indicate deduction has been made
+                isAsrDeducted = true;
+                isAsrDeductButtonPressed = false;
+            } catch (DateTimeParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (isAsrAddMinutesPressed && !isAsrAddition) {
+            try {
+                LocalTime asrTime24 = LocalTime.parse(asr24, DateTimeFormatter.ofPattern("H:mm"));
+                LocalTime addedAsrTime24 = asrTime24.plusMinutes(5);
+                asr24 = addedAsrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                // Set the flag to indicate addition has been made
+                isAsrAddition = true;
+                isAsrAddMinutesPressed = false;
+            } catch (DateTimeParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // ============= Maghrib =================
+
+        if (isMaghribDeductButtonPressed && !isMaghribDeducted) {
+            try {
+                LocalTime maghribTime24 = LocalTime.parse(maghrib24, DateTimeFormatter.ofPattern("H:mm"));
+                LocalTime deductedMaghribTime24 = maghribTime24.minusMinutes(1);
+                maghrib24 = deductedMaghribTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                // Set the flag to indicate deduction has been made
+                isMaghribDeducted = true;
+                isMaghribDeductButtonPressed = false;
+            } catch (DateTimeParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (isMaghribAddMinutesPressed && !isMaghribAddition) {
+            try {
+                LocalTime maghribTime24 = LocalTime.parse(maghrib24, DateTimeFormatter.ofPattern("H:mm"));
+                LocalTime addedMaghribTime24 = maghribTime24.plusMinutes(1);
+                maghrib24 = addedMaghribTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                // Set the flag to indicate addition has been made
+                isMaghribAddition = true;
+                isMaghribAddMinutesPressed = false;
+            } catch (DateTimeParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // ======================= Isha ============================
+        if (isIshaDeductButtonPressed && !isIshaDeducted) {
+            try {
+                LocalTime ishaTime24 = LocalTime.parse(isha24, DateTimeFormatter.ofPattern("H:mm"));
+                LocalTime deductedIshaTime24 = ishaTime24.minusMinutes(5);
+                isha24 = deductedIshaTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                // Set the flag to indicate deduction has been made
+                isIshaDeducted = true;
+                isIshaDeductButtonPressed = false;
+            } catch (DateTimeParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (isIshaAddMinutesPressed && !isIshaAddition) {
+            try {
+                LocalTime ishaTime24 = LocalTime.parse(isha24, DateTimeFormatter.ofPattern("H:mm"));
+                LocalTime addedIshaTime24 = ishaTime24.plusMinutes(5);
+                isha24 = addedIshaTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                // Set the flag to indicate addition has been made
+                isIshaAddition = true;
+                isIshaAddMinutesPressed = false;
+            } catch (DateTimeParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+    }
+
+
+
+    // Update the flip clock display with the remaining time
+    public void updateFlipClockDisplay(long remainingMillis) {
+//        hoursView.startFlipClock(remainingMillis);
+
+
+        long hours = remainingMillis / (60 * 60 * 1000) % 24;
+        long minutes = remainingMillis / (60 * 1000) % 60;
+        long seconds = remainingMillis / 1000 % 60;
+
+        final long delay = 1000; // Delay between each transition in milliseconds
+
+//        int hour =  (int) hours;
+//        int minute = (int) minutes;
+//        int second = (int) seconds;
+//
+//        String hoursString = String.valueOf(hours);
+//        hoursView.animateFlip(hoursString);
+//        String minutesString = String.valueOf(minutes);
+//        String secondsString = String.valueOf(seconds);
+//
+//        minutesView.animateFlip(minutesString);
+//        secondsView.animateFlip(secondsString);
+
+//        String hoursText = String.format("%02d", hours); // Format the hours with leading zero if necessary
+//        String minutesText = String.format("%02d", minutes); // Format the minutes with leading zero if necessary
+//        String secondsText = String.format("%02d", seconds); // Format the seconds with leading zero if necessary
+//        hoursView.animateFlip(hoursText);
+//        minutesView.animateFlip(minutesText);
+//        secondsView.animateFlip(secondsText);
+
+
+//// Example usage: animate the flip clock for hours, minutes, and seconds
+//        hoursView.animateFlip(hours.toString());
+//        minutesView.animateFlip("25");
+//        secondsView.animateFlip("42");
+
+
+////         check if the values passed are working
+//        hoursView.animateMillisTransition(hour * 3600 * 1000);
+//        minutesView.animateMillisTransition(minute * 60 * 1000);
+//        secondsView.animateMillisTransition(second * 1000);
+//
+//
+//        Log.wtf("Checking", "Hours: "+hour + " Minutes: " + minute + " Seconds: " + second);
+//        // Animate the transition for hours
+//        hoursView.postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                hoursView.animateMillisTransition(hour * 3600 * 1000);
+//            }
+//        }, delay);
+//
+//        // Animate the transition for minutes
+//        minutesView.postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                minutesView.animateMillisTransition(minute * 60 * 1000);
+//            }
+//        }, delay * 2); // Double the delay for minutes
+//
+//        // Animate the transition for seconds
+//        secondsView.postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                secondsView.animateMillisTransition(second * 1000);
+//            }
+//        }, delay * 3); // Triple the delay for seconds
+    }
+
+
+
+
+    // =================================== Load button =================================
+
+
+
+// ======================================= Backups don't touch ========================================
+
+
+    // Backup of Get Time 10 June 2023 = Working Don't EDIT THIS
+
+    public void CalculateTimingsThrobbing() {
+        DateTimeFormatter inputFormat = DateTimeFormatter.ofPattern("HH:mm"); // Assuming the prayer times are in 12-hour format
+        DateTimeFormatter outputFormat = DateTimeFormatter.ofPattern("HH:mm"); // Format to 24-hour format
+        DateTimeFormatter FajrinputFormat = DateTimeFormatter.ofPattern("H:mm"); // Assuming the prayer times are in 12-hour format
+
+        try {
+            // Convert prayer times to LocalTime objects
+            LocalTime fajrTime = LocalTime.parse(fajr24.trim(), FajrinputFormat);
+            LocalTime zuharTime = LocalTime.parse(zuhar24.trim(), FajrinputFormat);
+            LocalTime asrTime = LocalTime.parse(asr24.trim(), FajrinputFormat);
+            LocalTime magribTime = LocalTime.parse(maghrib24.trim(), FajrinputFormat);
+            LocalTime ishaTime = LocalTime.parse(isha24.trim(), FajrinputFormat);
+
+            // Add 12 hours to each prayer time except fajr To avoid time Format ERROR
+            fajrTime = fajrTime.plusHours(0);
+            zuharTime = zuharTime.plusHours(12);
+            asrTime = asrTime.plusHours(12);
+            magribTime = magribTime.plusHours(12);
+            ishaTime = ishaTime.plusHours(12);
+
+            // Get the current date and time
+            LocalDate currentDate = LocalDate.now();
+            LocalTime currentTime = LocalTime.now();
+            LocalDateTime currentDateTime = LocalDateTime.of(currentDate, currentTime);
+            TextView[] boxBackgrounds = {BoxFajr, BoxZuhar, BoxAsr, BoxMaghrib, BoxIsha};
+
+            // Calculate the next prayer index
+            int nextPrayerIndex = -1;
+            LocalTime[] prayerTimes = {fajrTime, zuharTime, asrTime, magribTime, ishaTime};
+            String[] prayerNames = {"Fajr", "Zuhar", "Asr", "Maghrib", "Isha"};
+
+
+            for (int i = 0; i < prayerTimes.length; i++) {
+                if (currentDateTime.toLocalTime().compareTo(prayerTimes[i]) <= 0 || i == prayerTimes.length - 1) {
+                    nextPrayerIndex = i;
+                    Log.d("My Activity", "Next Prayer: " + prayerNames[nextPrayerIndex] + " " + prayerTimes[i]);
+                    break;
+                }
+            }
+
+            DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy"); // Updated date format
+            Log.d("My Activity", "Check Today's Date: " + currentDate.format(dateFormat)); // Format the current date
+
+            if (nextPrayerIndex != -1) {
+                LocalTime nextPrayerTime = prayerTimes[nextPrayerIndex];
+                LocalDateTime nextPrayerDateTime = LocalDateTime.of(currentDate, nextPrayerTime);
+
+                // Check if the current time is before the next prayer
+                if (currentDateTime.isBefore(nextPrayerDateTime)) {
+                    // Remaining time until the next prayer
+                    Duration remainingTime = Duration.between(currentDateTime, nextPrayerDateTime);
+
+                    // Convert remaining time to milliseconds
+                    long remainingMillis = remainingTime.toMillis();
+//                    Log.d("My Activity", "IF Block: Time remaining in Millis: " + remainingMillis);
+
+                    Countdowntime(remainingMillis);
+                    countdowntxt.setText(countdowndt);
+                    Namaz.setText(prayerNames[nextPrayerIndex]);
+                    Log.wtf("My Activity", "next prayer: " + prayerNames[nextPrayerIndex]);
+
+                    // Set the background for the corresponding prayer
+                    clearBackground();
+                    boxBackgrounds[nextPrayerIndex].setBackgroundResource(R.drawable.textview_outline);
+
+
+                    // ========================== ANIMATION ===============================
+
+                    // Set the initial visibility of the view to invisible
+                    boxBackgrounds[nextPrayerIndex].setVisibility(View.INVISIBLE);
+
+// Create an AlphaAnimation for the fade in and out effect
+                    AlphaAnimation fadeInOutAnimation = new AlphaAnimation(0f, 3f);
+                    fadeInOutAnimation.setDuration(2000); // Duration for each fade in/out animation
+                    fadeInOutAnimation.setFillAfter(true);
+                    fadeInOutAnimation.setRepeatMode(Animation.REVERSE); // Reverse the animation
+                    fadeInOutAnimation.setRepeatCount(Animation.INFINITE); // Repeat the animation infinitely
+                    fadeInOutAnimation.setInterpolator(new AccelerateDecelerateInterpolator());
+
+// Schedule the animation to start after a delay
+                    Handler handler = new Handler();
+                    int finalNextPrayerIndex = nextPrayerIndex;
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            // Make the view visible and start the animation
+                            boxBackgrounds[finalNextPrayerIndex].setVisibility(View.VISIBLE);
+                            boxBackgrounds[finalNextPrayerIndex].startAnimation(fadeInOutAnimation);
+                        }
+                    }, 2000); // Delay in milliseconds before starting the animation
+
+
+                    // Deduct 5 minutes from Fajr24 time if FajrDeduct button is pressed and deduction is not already made
+                    if (isFajrDeductButtonPressed && !isFajrDeducted) {
+                        try {
+                            LocalTime fajrTime24 = LocalTime.parse(fajr24, DateTimeFormatter.ofPattern("H:mm"));
+                            LocalTime deductedFajrTime24 = fajrTime24.minusMinutes(5);
+                            fajr24 = deductedFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+                            // Increment the deduction count
+
+                            // Set the flag to indicate deduction has been made
+                            isFajrDeducted = false;
+                            isFajrDeductButtonPressed = false;
+                        } catch (DateTimeParseException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    if (isbtnFajrPlusPressed && !isFajrAddition) {
+                        try {
+                            LocalTime fajrTime24 = LocalTime.parse(fajr24, DateTimeFormatter.ofPattern("H:mm"));
+                            LocalTime addedFajrTime24 = fajrTime24.plusMinutes(5);
+                            fajr24 = addedFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+
+                            // Increment the addition count
+
+
+                            // Set the flag to indicate deduction has been reversed
+                            isFajrAddition = false;
+                            isbtnFajrPlusPressed = false;
+
+                        } catch (DateTimeParseException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    dFajr(fajr24);
+                    dZuhar(zuhar24);
+                    dAsr(asr24);
+                    dMaghrib(maghrib24);
+                    dIsha(isha24);
+
+                } else {
+
+                    // If Isha time is passed
+//                    Log.wtf("My Activity", "UpdatedPRayertimes called");
+
+                    // Calculate the next prayer's datetime of the following day
+                    LocalDateTime nextDayDateTime = currentDateTime.plusDays(1);
+                    LocalDateTime nextPrayerNextDayDateTime = LocalDateTime.of(nextDayDateTime.toLocalDate(), prayerTimes[0]);
+
+                    // Remaining time until the next prayer of the following day
+                    Duration remainingTime = Duration.between(currentDateTime, nextPrayerNextDayDateTime);
+
+                    // Convert remaining time to milliseconds
+                    long remainingMillis = remainingTime.toMillis();
+
+                    //                    Log.d("My Activity", "Else block: Time remaining in Millis: " + remainingMillis);
+
+                    Countdowntime(remainingMillis);
+                    countdowntxt.setText(countdowndt);
+                    Namaz.setText(prayerNames[0]);
+                    NextDayPrayerTimes();
+
+                    // Set the background for the corresponding prayer
+                    clearBackground();
+                    BoxFajr.setBackgroundResource(R.drawable.textview_outline);
+
+                    // Set the initial visibility of the view to invisible
+                    BoxFajr.setVisibility(View.INVISIBLE);
+
+// Create an AlphaAnimation for the fade in and out effect
+                    AlphaAnimation fadeInOutAnimation = new AlphaAnimation(0f, 2f);
+                    fadeInOutAnimation.setDuration(2000); // Duration for each fade in/out animation
+                    fadeInOutAnimation.setFillAfter(true);
+                    fadeInOutAnimation.setRepeatMode(Animation.REVERSE); // Reverse the animation
+                    fadeInOutAnimation.setRepeatCount(Animation.INFINITE); // Repeat the animation infinitely
+                    fadeInOutAnimation.setInterpolator(new AccelerateDecelerateInterpolator());
+
+// Schedule the animation to start after a delay
+                    Handler handler = new Handler();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            // Make the view visible and start the animation
+                            BoxFajr.setVisibility(View.VISIBLE);
+                            BoxFajr.startAnimation(fadeInOutAnimation);
+                        }
+                    }, 2000); // Delay in milliseconds before starting the animation
+
+
+                    Log.wtf("My Activity", "next prayer: " + prayerNames[nextPrayerIndex]);
+
+                    dFajr(fajr24);
+                    dZuhar(zuhar24);
+                    dAsr(asr24);
+                    dMaghrib(maghrib24);
+                    dIsha(isha24);
+
+
+                }
+
+            }
+
+        } catch (DateTimeParseException e) {
+            e.printStackTrace();
+            // Handle parsing errors
+        }
+    }
+
+
+    public void CalculateTimingsWorkingUpdate6June23() {
+        DateTimeFormatter inputFormat = DateTimeFormatter.ofPattern("HH:mm"); // Assuming the prayer times are in 12-hour format
+        DateTimeFormatter outputFormat = DateTimeFormatter.ofPattern("HH:mm"); // Format to 24-hour format
+        DateTimeFormatter FajrinputFormat = DateTimeFormatter.ofPattern("H:mm"); // Assuming the prayer times are in 12-hour format
+
+        try {
+            // Convert prayer times to LocalTime objects
+            LocalTime fajrTime = LocalTime.parse(fajr24.trim(), FajrinputFormat);
+            LocalTime zuharTime = LocalTime.parse(zuhar24.trim(), FajrinputFormat);
+            LocalTime asrTime = LocalTime.parse(asr24.trim(), FajrinputFormat);
+            LocalTime magribTime = LocalTime.parse(maghrib24.trim(), FajrinputFormat);
+            LocalTime ishaTime = LocalTime.parse(isha24.trim(), FajrinputFormat);
+
+            // Add 12 hours to each prayer time except fajr To avoid time Format ERROR
+            fajrTime = fajrTime.plusHours(0);
+            zuharTime = zuharTime.plusHours(12);
+            asrTime = asrTime.plusHours(12);
+            magribTime = magribTime.plusHours(12);
+            ishaTime = ishaTime.plusHours(12);
+
+            // Get the current date and time
+            LocalDate currentDate = LocalDate.now();
+            LocalTime currentTime = LocalTime.now();
+            LocalDateTime currentDateTime = LocalDateTime.of(currentDate, currentTime);
+            TextView[] boxBackgrounds = {BoxFajr, BoxZuhar, BoxAsr, BoxMaghrib, BoxIsha};
+
+            // Calculate the next prayer index
+            int nextPrayerIndex = -1;
+            LocalTime[] prayerTimes = {fajrTime, zuharTime, asrTime, magribTime, ishaTime};
+            String[] prayerNames = {"Fajr", "Zuhar", "Asr", "Maghrib", "Isha"};
+
+            for (int i = 0; i < prayerTimes.length; i++) {
+                if (currentDateTime.toLocalTime().compareTo(prayerTimes[i]) <= 0 || i == prayerTimes.length - 1) {
+                    nextPrayerIndex = i;
+                    Log.d("My Activity", "Next Prayer: " + prayerNames[nextPrayerIndex] + " " + prayerTimes[i]);
+                    break;
+                }
+            }
+
+            DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy"); // Updated date format
+            Log.d("My Activity", "Check Today's Date: " + currentDate.format(dateFormat)); // Format the current date
+
+            if (nextPrayerIndex != -1) {
+                LocalTime nextPrayerTime = prayerTimes[nextPrayerIndex];
+                LocalDateTime nextPrayerDateTime = LocalDateTime.of(currentDate, nextPrayerTime);
+                // Check if the current time is before the next prayer
+                if (currentDateTime.isBefore(nextPrayerDateTime)) {
+                    // Remaining time until the next prayer
+                    Duration remainingTime = Duration.between(currentDateTime, nextPrayerDateTime);
+
+                    // Convert remaining time to milliseconds
+                    long remainingMillis = remainingTime.toMillis();
+//                    Log.d("My Activity", "IF Block: Time remaining in Millis: " + remainingMillis);
+
+                    Countdowntime(remainingMillis);
+                    countdowntxt.setText(countdowndt);
+                    Namaz.setText(prayerNames[nextPrayerIndex]);
+                    Log.wtf("My Activity", "next prayer: " + prayerNames[nextPrayerIndex]);
+
+                    // Set the background for the corresponding prayer
+                    clearBackground();
+                    boxBackgrounds[nextPrayerIndex].setBackgroundResource(R.drawable.textview_outline);
+
+
+                    dFajr(fajr24);
+                    dZuhar(zuhar24);
+                    dAsr(asr24);
+                    dMaghrib(maghrib24);
+                    dIsha(isha24);
+
+                } else {
+
+                    // If Isha time is passed
+//                    Log.wtf("My Activity", "UpdatedPRayertimes called");
+
+                    // Calculate the next prayer's datetime of the following day
+                    LocalDateTime nextDayDateTime = currentDateTime.plusDays(1);
+                    LocalDateTime nextPrayerNextDayDateTime = LocalDateTime.of(nextDayDateTime.toLocalDate(), prayerTimes[0]);
+
+                    // Remaining time until the next prayer of the following day
+                    Duration remainingTime = Duration.between(currentDateTime, nextPrayerNextDayDateTime);
+
+                    // Convert remaining time to milliseconds
+                    long remainingMillis = remainingTime.toMillis();
+//                    Log.d("My Activity", "Else block: Time remaining in Millis: " + remainingMillis);
+
+                    Countdowntime(remainingMillis);
+                    countdowntxt.setText(countdowndt);
+                    Namaz.setText(prayerNames[0]);
+                    NextDayPrayerTimes();
+
+                    // Set the background for the corresponding prayer
+                    clearBackground();
+                    BoxFajr.setBackgroundResource(R.drawable.textview_outline);
+
+
+                    Log.wtf("My Activity", "next prayer: " + prayerNames[nextPrayerIndex]);
+
+                    dFajr(fajr24);
+                    dZuhar(zuhar24);
+                    dAsr(asr24);
+                    dMaghrib(maghrib24);
+                    dIsha(isha24);
+
+
+                }
+
+            }
+
+        } catch (DateTimeParseException e) {
+            e.printStackTrace();
+            // Handle parsing errors
+        }
+    }
+
+    private void GetTimeWorkingOriginalBackup(String... filePath) {
+        if (filePath.length > 0) {
+            // A file path was provided, use it
+            path = filePath[0];
+        } else {
+            // No file path provided, use the default
+            path = "timings.xls";
+        }
+
+        try {
+            AssetManager am = getAssets();
+            InputStream is = am.open(path);
+            Workbook wb = Workbook.getWorkbook(is);
+
+            Sheet sheet = wb.getSheet(0);
+            int numColumns = sheet.getColumns();
+            int numRows = sheet.getRows();
+            int dateColumnIndex = 0;
+            int fajrColumnIndex = 1;
+            int zuharColumnIndex = 2;
+            int asrColumnIndex = 3;
+            int magribColumnIndex = 4;
+            int ishaColumnIndex = 5;
+
+            // Match the date format with the Excel date format to load the data
+            String currentDateString = DateFormat.format("MM/dd/yyyy", new Date()).toString();
+
+            List<String[]> data = new ArrayList<>();
+
+            // Load all the data into a list
+            for (int row = 0; row < numRows; row++) {
+                String[] rowData = new String[numColumns];
+                for (int col = 0; col < numColumns; col++) {
+                    Cell cell = sheet.getCell(col, row);
+                    rowData[col] = cell.getContents();
+                }
+                data.add(rowData);
+            }
+
+            // Find the row with the current date
+            int currentRow = -1;
+            String currentDate = "";
+            if (currentDateString.length() >= 10) {
+                currentDate = currentDateString.substring(0, 10); // Extract date part
+            }
+            for (int row = 0; row < data.size(); row++) {
+                String[] rowData = data.get(row);
+                String cellValue = rowData[dateColumnIndex];
+                String cellDate = "";
+                if (cellValue.length() >= 10) {
+                    // Extract date part from cell value with different format
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
+                    Date cellDateObj = dateFormat.parse(cellValue);
+                    SimpleDateFormat outputFormat = new SimpleDateFormat("MM/dd/yyyy");
+                    cellDate = outputFormat.format(cellDateObj);
+                }
+                Log.d("My Activity", "Cell value: " + cellValue);
+                Log.d("My Activity", "Cell date: " + cellDate);
+                if (cellDate.equals(currentDate)) {
+                    currentRow = row;
+                    Log.d("My Activity", "Today's Date Matched: " + cellValue);
+
+                    break;
+                }
+            }
+
+
+            if (currentRow != -1) {
+                // Current date found in the data
+                CharSequence currentdate = DateFormat.format("MM/dd/yyyy HH:mm:ss", d.getTime());
+                Log.wtf("My Activity", "System Date & Time: " + currentdate);
+
+                String[] currentRowData = data.get(currentRow);
+                String fajrTime = currentRowData[fajrColumnIndex].trim();
+                String zuharTime = currentRowData[zuharColumnIndex].trim();
+                String asrTime = currentRowData[asrColumnIndex].trim();
+                String magribTime = currentRowData[magribColumnIndex].trim();
+                String ishaTime = currentRowData[ishaColumnIndex].trim();
+
+                // Get the prayer times for the next day
+                int nextDayRow = (currentRow + 1) % data.size();
+                String[] nextDayRowData = data.get(nextDayRow);
+                String nextDayFajrTime = nextDayRowData[fajrColumnIndex].trim();
+                String nextDayZuharTime = nextDayRowData[zuharColumnIndex].trim();
+                String nextDayAsrTime = nextDayRowData[asrColumnIndex].trim();
+                String nextDayMagribTime = nextDayRowData[magribColumnIndex].trim();
+                String nextDayIshaTime = nextDayRowData[ishaColumnIndex].trim();
+
+                // Store the next day's prayer times
+                nextfajr = nextDayFajrTime.trim();
+                nextzuhar = nextDayZuharTime.trim();
+                nextasr = nextDayAsrTime.trim();
+                nextMaghrib = nextDayMagribTime.trim();
+                nextisha = nextDayIshaTime.trim();
+
+                // Update the UI with the prayer times
+                dFajr(fajrTime);
+                dZuhar(zuharTime);
+                dAsr(asrTime);
+                dMaghrib(magribTime);
+                dIsha(ishaTime);
+
+                fajr24 = fajrTime.trim();
+                zuhar24 = zuharTime;
+                asr24 = asrTime;
+                maghrib24 = magribTime;
+                isha24 = ishaTime;
+
+
+            } else {
+                // Current date not found in the data
+                Log.wtf("My Activity", "Current Date Did Match in The Excel Data");
+                replaceFile();
+            }
+
+
+        } catch (IOException | BiffException e) {
+            e.printStackTrace();
+            return;
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void startUpdatingClockEverySecondOriginalBackup() {
+        // Create a countdown timer with a tick interval of 1 second (1000 milliseconds)
+        new CountDownTimer(Long.MAX_VALUE, 1000) {
+            public void onTick(long millisUntilFinished) {
+                CalculateTimings(); // Call the method to update the clock every second
+            }
+
+            public void onFinish() {
+                // Timer finished (not relevant for updating the clock)
+            }
+        }.start();
+    }
+
+    public void NextDayPrayerTimesWorkingOriginal() {
+        // Assuming you have a method to fetch the updated prayer times for the next day
+        String[] updatedPrayerTimes = {nextfajr, nextzuhar, nextasr, nextMaghrib, nextisha};
+
+        // Check if the fetched prayer times are valid
+        if (updatedPrayerTimes != null && updatedPrayerTimes.length == 5) {
+            try {
+                DateTimeFormatter FajrinputFormat = DateTimeFormatter.ofPattern("H:mm"); // Assuming the prayer times are in 12-hour format
+
+                // Convert the updated prayer times to LocalTime objects
+                LocalTime updatedFajr = LocalTime.parse(updatedPrayerTimes[0], FajrinputFormat);
+                LocalTime updatedZuhar = LocalTime.parse(updatedPrayerTimes[1], FajrinputFormat);
+                LocalTime updatedAsr = LocalTime.parse(updatedPrayerTimes[2], FajrinputFormat);
+                LocalTime updatedMaghrib = LocalTime.parse(updatedPrayerTimes[3], FajrinputFormat);
+                LocalTime updatedIsha = LocalTime.parse(updatedPrayerTimes[4], FajrinputFormat);
+
+                // Get the current date and time
+                LocalDate currentDate = LocalDate.now();
+                LocalTime currentTime = LocalTime.now();
+                LocalDateTime currentDateTime = LocalDateTime.of(currentDate, currentTime);
+
+                // Check if it is after the Isha prayer time
+                LocalTime ishaTime = LocalTime.parse(isha24);
+                LocalDateTime ishaDateTime = LocalDateTime.of(currentDate, ishaTime);
+
+                if (currentDateTime.isAfter(ishaDateTime)) {
+                    // Update the prayer times array with the updated values
+                    fajr24 = updatedPrayerTimes[0];
+                    zuhar24 = updatedPrayerTimes[1];
+                    asr24 = updatedPrayerTimes[2];
+                    maghrib24 = updatedPrayerTimes[3];
+                    isha24 = updatedPrayerTimes[4];
+
+                    dFajr(fajr24);
+                    dZuhar(zuhar24);
+                    dAsr(asr24);
+                    dMaghrib(maghrib24);
+                    dIsha(isha24);
+                }
+            } catch (DateTimeParseException e) {
+                e.printStackTrace();
+                // Handle parsing errors if necessary
+            }
+        } else {
+            // Handle the case where the fetched prayer times are not valid
+        }
+    }
+
+    public void CalculateTimingsWorkingOriginal() {
+        DateTimeFormatter inputFormat = DateTimeFormatter.ofPattern("HH:mm"); // Assuming the prayer times are in 12-hour format
+        DateTimeFormatter outputFormat = DateTimeFormatter.ofPattern("HH:mm"); // Format to 24-hour format
+        DateTimeFormatter FajrinputFormat = DateTimeFormatter.ofPattern("H:mm"); // Assuming the prayer times are in 12-hour format
+
+        try {
+            // Convert prayer times to LocalTime objects
+            LocalTime fajrTime = LocalTime.parse(fajr24.trim(), FajrinputFormat);
+            LocalTime zuharTime = LocalTime.parse(zuhar24.trim(), FajrinputFormat);
+            LocalTime asrTime = LocalTime.parse(asr24.trim(), FajrinputFormat);
+            LocalTime magribTime = LocalTime.parse(maghrib24.trim(), FajrinputFormat);
+            LocalTime ishaTime = LocalTime.parse(isha24.trim(), FajrinputFormat);
+
+            // Add 12 hours to each prayer time except fajr
+            fajrTime = fajrTime.plusHours(0);
+            zuharTime = zuharTime.plusHours(12);
+            asrTime = asrTime.plusHours(12);
+            magribTime = magribTime.plusHours(12);
+            ishaTime = ishaTime.plusHours(12);
+
+            // Get the current date and time
+            LocalDate currentDate = LocalDate.now();
+            LocalTime currentTime = LocalTime.now();
+            LocalDateTime currentDateTime = LocalDateTime.of(currentDate, currentTime);
+
+            // Calculate the next prayer index
+            int nextPrayerIndex = -1;
+            LocalTime[] prayerTimes = {fajrTime, zuharTime, asrTime, magribTime, ishaTime};
+            String[] prayerNames = {"Fajr", "Zuhar", "Asr", "Maghrib", "Isha"};
+
+            for (int i = 0; i < prayerTimes.length; i++) {
+                if (currentDateTime.toLocalTime().compareTo(prayerTimes[i]) <= 0 || i == prayerTimes.length - 1) {
+                    nextPrayerIndex = i;
+                    Log.d("My Activity", "Next Prayer: " + prayerNames[nextPrayerIndex]);
+                    break;
+                }
+            }
+
+            DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy"); // Updated date format
+            Log.d("My Activity", "Check Today's Date: " + currentDate.format(dateFormat)); // Format the current date
+
+            if (nextPrayerIndex != -1) {
+                LocalTime nextPrayerTime = prayerTimes[nextPrayerIndex];
+                LocalDateTime nextPrayerDateTime = LocalDateTime.of(currentDate, nextPrayerTime);
+                // Check if the current time is before the next prayer
+                if (currentDateTime.isBefore(nextPrayerDateTime)) {
+                    // Remaining time until the next prayer
+                    Duration remainingTime = Duration.between(currentDateTime, nextPrayerDateTime);
+
+                    // Convert remaining time to milliseconds
+                    long remainingMillis = remainingTime.toMillis();
+//                    Log.d("My Activity", "IF Block: Time remaining in Millis: " + remainingMillis);
+
+                    Countdowntime(remainingMillis);
+                    countdowntxt.setText(countdowndt);
+                    Namaz.setText(prayerNames[nextPrayerIndex]);
+
+                    // Set the background for the corresponding prayer
+                    clearBackground();
+                    TextView[] boxBackgrounds = {BoxFajr, BoxZuhar, BoxAsr, BoxMaghrib, BoxIsha};
+                    boxBackgrounds[nextPrayerIndex].setBackgroundResource(R.drawable.textview_outline);
+                } else {
+
+                    // If Isha time is passed
+//                    Log.wtf("My Activity", "UpdatedPRayertimes called");
+
+
+                    // Calculate the next prayer's datetime of the following day
+                    LocalDateTime nextDayDateTime = currentDateTime.plusDays(1);
+                    LocalDateTime nextPrayerNextDayDateTime = LocalDateTime.of(nextDayDateTime.toLocalDate(), prayerTimes[0]);
+
+                    // Remaining time until the next prayer of the following day
+                    Duration remainingTime = Duration.between(currentDateTime, nextPrayerNextDayDateTime);
+
+                    // Convert remaining time to milliseconds
+                    long remainingMillis = remainingTime.toMillis();
+//                    Log.d("My Activity", "Else block: Time remaining in Millis: " + remainingMillis);
+
+                    Countdowntime(remainingMillis);
+                    countdowntxt.setText(countdowndt);
+                    Namaz.setText(prayerNames[0]);
+                    NextDayPrayerTimes();
+
+                    // Set the background for the corresponding prayer
+                    clearBackground();
+                    BoxFajr.setBackgroundResource(R.drawable.textview_outline);
+
+                }
+
+            }
+
+        } catch (DateTimeParseException e) {
+            e.printStackTrace();
+            // Handle parsing errors
+        }
+    }
+
+
+    // ********************************************** Code bank **********************************
+//
+    // ************************** Button Add Minus Concept ***************************************************
+
+    // ********************* Fajr buttons for increment decrement ******************************
+//    Button btnFajrPlus = findViewById(R.id.btnFajrPlus);
+//    Button btnFajrMinus = findViewById(R.id.btnFajrMinus);
+//
+//
+////        btnFajrPlus.setVisibility(View.INVISIBLE);
+////        btnFajrMinus.setVisibility(View.INVISIBLE);
+//
+//
+//        btnFajrPlus.setOnClickListener(new View.OnClickListener() {
+//        @Override
+//        public void onClick(View v) {
+//            // Calculate the addition based on the count
+//            fajrCounter++;
+//            if (fajrCounter >= 0) {
+//                fajrAdd++;
+//            }
+//            if (fajrCounter == 0) {
+//                fajrAdd = 0;
+//            }
+//
+//            handleAddMinutesButtonClick();
+//            Log.wtf("MY ACITVITY", "fajrCounter: " + fajrCounter);
+//        }
+//    });
+//
+//        btnFajrMinus.setOnClickListener(new View.OnClickListener() {
+//        @Override
+//        public void onClick(View v) {
+//            fajrCounter--;
+//            handleMinusMinutesButtonClick();
+//
+//            if (fajrCounter >= 0) {
+//                fajrAdd++;
+//            }
+//            if (fajrCounter == 0) {
+//                fajrAdd = 0;
+//            }
+//
+//            Log.wtf("MY ACITVITY", "fajrCounter: " + fajrCounter);
+//
+//        }
+//    });
+//
+//    private void handleAddMinutesButtonClick() {
+//        // Calculate the addition based on the counter value
+//        isbtnFajrPlusPressed = true;
+//        isFajrAddition = false;
+////        Log.wtf("MY ACITVITY", "Button fajrCounter - : " + fajrCounter);
+//
+//        // Perform calculations using the fajrCounter
+//        performAdditionCalculations();
+//    }
+//    private void handleMinusMinutesButtonClick() {
+//        // Calculate the deduction based on the counter value
+//        isFajrDeductButtonPressed = true;
+//        isFajrDeducted = false;
+////        Log.wtf("MY ACITVITY", "Button fajrCounter - : " + fajrCounter);
+//
+//        // Perform calculations using the fajrCounter
+//        performSubtractionCalculations();
+//    }
+//
+//    private void performAdditionCalculations() {
+//        fajrTime24 = LocalTime.parse(fajr24, DateTimeFormatter.ofPattern("H:mm"));
+//        addedFajrTime24 = fajrTime24.plusMinutes(5 );
+//        fajr24 = addedFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+//
+//        nextFajr24 = LocalTime.parse(nextfajr, DateTimeFormatter.ofPattern("H:mm"));
+//        nextFajrTime24 = nextFajr24.plusMinutes(5);
+//        nextfajr = nextFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+//
+//        // Perform any other necessary calculations or operations
+//    }
+//
+//    private void performSubtractionCalculations() {
+//        fajrTime24 = LocalTime.parse(fajr24, DateTimeFormatter.ofPattern("H:mm"));
+////        deductedFajrTime24 = fajrTime24.minusMinutes(5 * Math.abs(fajrCounter));
+//        deductedFajrTime24 = fajrTime24.minusMinutes(5 );
+//
+//        fajr24 = deductedFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+//
+//        nextFajr24 = LocalTime.parse(nextfajr, DateTimeFormatter.ofPattern("H:mm"));
+//        nextFajrTime24 = nextFajr24.minusMinutes(5);
+//        nextfajr = nextFajrTime24.format(DateTimeFormatter.ofPattern("H:mm"));
+//
+//        // Perform any other necessary calculations or operations
+//    }
+
+
+    //        // ==================================== Change colours ===============================
+//// Create a Handler
+//        Handler handler = new Handler();
+//
+////         Object to change the background color
+//        @SuppressLint({"MissingInflatedId", "LocalSuppress"}) View yourView = findViewById(R.id.friday);
+//
+//// Create a Runnable
+//        Runnable runnable = new Runnable() {
+//            @Override
+//            public void run() {
+//                // Get the current time
+//                Calendar calendar = Calendar.getInstance();
+//                int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
+//                int hourOfDay = calendar.get(Calendar.HOUR_OF_DAY);
+//
+//                // Check if it is 2 hours before Zuhar on Friday
+////                int zuharTime = Integer.parseInt(zuhar24);
+////                if (hourOfDay >= (zuharTime - 2) && hourOfDay < zuharTime)
+//
+//                // check if it is friday and between 10am and 12pm
+////                if (dayOfWeek == Calendar.FRIDAY && hourOfDay >= 10 && hourOfDay < 12) {
+//
+//                    {
+//                    // Generate a random color
+//                    Random random = new Random();
+//                    int color = Color.argb(255, random.nextInt(256), random.nextInt(256), random.nextInt(256));
+//
+//                    // Set the background color of your activity or view
+////                    yourView.setBackgroundColor(color);
+//
+//                    yourView.setBackgroundColor(color);
+//
+//                }
+//
+//                // Schedule the next iteration after 5 seconds
+//                handler.postDelayed(this, 2000); // 5000 milliseconds = 5 seconds
+//            }
+//        };
+}
